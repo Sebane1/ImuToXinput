@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Everything_To_IMU_SlimeVR.Tracking;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -9,11 +10,29 @@ namespace ImuToXInput
 {
     public class TrackerState
     {
+        private Quaternion _rotation;
+        private Vector3 _euler;
+
+        private Vector3 _eulerCalibration;
+
         public int TrackerId { get; set; }
         public string BodyPart { get; set; }
         public string Ip { get; set; }
 
-        public Quaternion Rotation { get; set; }
+        public Quaternion Rotation
+        {
+            get
+            {
+                return _rotation;
+            }
+            set
+            {
+                _rotation = value;
+                _euler = _rotation.QuaternionToEuler();
+            }
+        }
+
+
 
         public Vector3 SmoothRotation { get; set; }
 
@@ -22,6 +41,8 @@ namespace ImuToXInput
         public bool ButtonBState { get; set; }
         public bool ButtonXState { get; set; }
         public bool ButtonYState { get; set; }
+        public Vector3 Euler { get => _eulerCalibration - _euler; set => _euler = value; }
+        public Vector3 EulerCalibration { get => _eulerCalibration; set => _eulerCalibration = value; }
 
         // Apply smoothing
         //public void ApplySmoothing(float alpha = 0.7f)
@@ -34,8 +55,9 @@ namespace ImuToXInput
         // Get trigger value (non-linear scaling)
         public byte GetTriggerValue()
         {
-            float norm = (SmoothY + 1f) / 2f;
+            float norm = (Rotation.Y + 1f) / 2f;
             norm = (float)Math.Pow(norm, 1.5f);
+            //Console.WriteLine(norm);
             return (byte)Math.Clamp(norm * 255f, 0, 255);
         }
     }

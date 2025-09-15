@@ -1,10 +1,12 @@
 ﻿using Everything_To_IMU_SlimeVR.Osc;
+using Everything_To_IMU_SlimeVR.Tracking;
 using Nefarius.ViGEm.Client;
 using Nefarius.ViGEm.Client.Targets;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
 using Newtonsoft.Json.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Numerics;
 using WebSocketSharp;
 
 namespace ImuToXInput
@@ -18,17 +20,17 @@ namespace ImuToXInput
 
         // Body-part → TrackerState
         private static Dictionary<string, TrackerState> trackers = new();
+        private static bool _chestCalibrated;
+        private static Vector3 _chestCalibration;
+        private static Vector3 _hipsCalibration;
+        private static bool _hipsCalibrated;
 
         static void Main()
         {
-            _oscHandler = new OscHandler();
-            _oscHandler.BoneUpdate += _oscHandler_BoneUpdate;
             // ---- 1. Setup ViGEm ----
             client = new ViGEmClient();
             xbox = client.CreateXbox360Controller();
             xbox.Connect();
-            ConnectWebSocket();
-
             xbox.FeedbackReceived += (s, e) =>
             {
                 // LEFT_HAND haptic
@@ -45,19 +47,18 @@ namespace ImuToXInput
                     if (intensity > 0) SendHapticToTracker(rightHand.Ip, intensity, 150);
                 }
             };
-            Console.WriteLine("Connected to SolarXR WebSocket.");
-
-            // ---- 3. Main loop ----
+            _oscHandler = new OscHandler();
+            _oscHandler.BoneUpdate += _oscHandler_BoneUpdate;
             while (true)
             {
                 UpdateController();
-                Thread.Sleep(1000); // ~100Hz
+                Thread.Sleep(10);
             }
         }
 
         private static void _oscHandler_BoneUpdate(object? sender, Tuple<string, System.Numerics.Vector3, System.Numerics.Quaternion> e)
         {
-            HandleSolarVMCMessage
+            HandleVmcMessage(e.Item1, e.Item3);
         }
 
         static void ConnectWebSocket()
@@ -99,36 +100,25 @@ namespace ImuToXInput
             }
         }
 
-        static void HandleVmcMessage(string json)
+        static void HandleVmcMessage(string bodyPart, Quaternion rotation)
         {
             try
             {
-                var obj = JObject.Parse(json);
-                if (obj["type"]?.ToString() != "tracker") return;
-
-                var data = obj["data"];
-                int trackerId = data["id"].Value<int>();
-                string bodyPart = data["info"]?["bodyPart"]?.ToString().ToUpper() ?? $"TRACKER_{trackerId}";
-                string ip = data["info"]?["ip"]?.ToString();
-
-                var rot = data["rotation"];
-                float x = rot["x"].Value<float>();
-                float y = rot["y"].Value<float>();
-                float z = rot["z"].Value<float>();
-                float w = rot["w"].Value<float>();
-
+                var eulerCalibration = new Vector3();
+                if (!trackers.ContainsKey(bodyPart))
+                {
+                    eulerCalibration = rotation.QuaternionToEuler();
+                } else
+                {
+                    eulerCalibration = trackers[bodyPart].EulerCalibration;
+                }
                 trackers[bodyPart] = new TrackerState
                 {
-                    TrackerId = trackerId,
+                    EulerCalibration = eulerCalibration,
                     BodyPart = bodyPart,
-                    Ip = ip,
-                    X = x,
-                    Y = y,
-                    Z = z,
-                    W = w
+                    Ip = "",
+                    Rotation = rotation
                 };
-
-                Console.WriteLine($"Tracker {trackerId} mapped to {bodyPart} IP={ip}");
             } catch (Exception ex)
             {
                 Console.WriteLine($"Parse error: {ex.Message}");
@@ -157,10 +147,7 @@ namespace ImuToXInput
                     TrackerId = trackerId,
                     BodyPart = bodyPart,
                     Ip = ip,
-                    X = x,
-                    Y = y,
-                    Z = z,
-                    W = w
+                    Rotation = new Quaternion(x, y, z, w),
                 };
 
                 Console.WriteLine($"Tracker {trackerId} mapped to {bodyPart} IP={ip}");
@@ -172,43 +159,51 @@ namespace ImuToXInput
 
         static void UpdateController()
         {
-            // Apply smoothing to all trackers
-            foreach (var t in trackers.Values)
-                t.ApplySmoothing();
-
-            // --- LEFT_FOOT → left stick + AB ---
-            if (trackers.TryGetValue("LEFT_FOOT", out var leftFoot))
+            if (trackers.TryGetValue("Chest", out var chest))
             {
-                xbox.SetAxisValue(Xbox360Axis.LeftThumbX, ApplyDeadzone(leftFoot.SmoothX));
-                xbox.SetAxisValue(Xbox360Axis.LeftThumbY, ApplyDeadzone(leftFoot.SmoothZ));
+                xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(chest.Euler.X * 2));
+                xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(-chest.Euler.Z * 2f));
+            }
+            if (trackers.TryGetValue("Hips", out var hips))
+            {
+                xbox.SetAxisValue(Xbox360Axis.LeftThumbX, ApplyDeadzone(hips.Euler.Y));
+                xbox.SetAxisValue(Xbox360Axis.LeftThumbY, ApplyDeadzone(-hips.Euler.X * 2));
+            }
+            if (trackers.TryGetValue("RightUpperArm", out var rightHand))
+            {
+                xbox.SetButtonState(Xbox360Button.B, rightHand.Euler.Z > 30f);
 
-                xbox.SetButtonState(Xbox360Button.A, leftFoot.SmoothY > 0.65f);
-                xbox.SetButtonState(Xbox360Button.B, leftFoot.SmoothY < -0.65f);
+                xbox.SetSliderValue(Xbox360Slider.RightTrigger, (byte)(rightHand.Euler.Z < -30f ? 255 : 0));
+            }
+            if (trackers.TryGetValue("LeftUpperArm", out var leftHand))
+            {
+                xbox.SetSliderValue(Xbox360Slider.LeftTrigger, (byte)(leftHand.Euler.Z < -30f ? 255 : 0));
+                //xbox.SetButtonState(Xbox360Button.Y, leftHand.Euler.Z < -30f);
+            }
+            if (trackers.TryGetValue("LeftFoot", out var leftFoot))
+            {
+                xbox.SetButtonState(Xbox360Button.A, leftFoot.Euler.X < -20);
+
+                xbox.SetButtonState(Xbox360Button.Y, leftFoot.Euler.Z > 10);
+                xbox.SetButtonState(Xbox360Button.LeftShoulder, leftFoot.Euler.Z > 10);
+            }
+            if (trackers.TryGetValue("RightFoot", out var rightFoot))
+            {
+                Console.WriteLine(rightFoot.Euler.Z);
+                xbox.SetButtonState(Xbox360Button.A, rightFoot.Euler.X < -20);
+
+                xbox.SetButtonState(Xbox360Button.X, rightFoot.Euler.Z < -5);
+                xbox.SetButtonState(Xbox360Button.RightShoulder, rightFoot.Euler.Z < -5);
             }
 
-            // --- RIGHT_FOOT → right stick + XY ---
-            if (trackers.TryGetValue("RIGHT_FOOT", out var rightFoot))
-            {
-                xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(rightFoot.SmoothX));
-                xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(rightFoot.SmoothZ));
-
-                xbox.SetButtonState(Xbox360Button.X, rightFoot.SmoothY > 0.65f);
-                xbox.SetButtonState(Xbox360Button.Y, rightFoot.SmoothY < -0.65f);
-            }
-
-            // --- LEFT_HAND → left trigger ---
-            if (trackers.TryGetValue("LEFT_HAND", out var leftHand))
-                xbox.SetSliderValue(Xbox360Slider.LeftTrigger, leftHand.GetTriggerValue());
-
-            // --- RIGHT_HAND → right trigger ---
-            if (trackers.TryGetValue("RIGHT_HAND", out var rightHand))
-                xbox.SetSliderValue(Xbox360Slider.RightTrigger, rightHand.GetTriggerValue());
         }
 
 
         static short ApplyDeadzone(float value, float deadzone = 0.15f)
         {
-            value = Math.Clamp(value, -1f, 1f);
+            // Console.WriteLine(value);
+            value = Math.Clamp(value / 15, -1f, 1f);
+            //  Console.WriteLine(value);
             if (Math.Abs(value) < deadzone) return 0;
             float sign = Math.Sign(value);
             float scaled = (Math.Abs(value) - deadzone) / (1f - deadzone);

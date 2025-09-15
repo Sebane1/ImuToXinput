@@ -14,4 +14,8 @@
     <PackageReference Include="WebSocketSharp.Standard" Version="1.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SlimeImuProtocol\SlimeImuProtocol.csproj" />
+  </ItemGroup>
+
 </Project>

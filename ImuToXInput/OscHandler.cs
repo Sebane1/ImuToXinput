@@ -27,7 +27,7 @@ namespace Everything_To_IMU_SlimeVR.Osc
         private Task _oscReceiveTask;
         private bool _disposed = false;
         private ulong _timetag;
-        private List<string> _boneList = new List<string>();
+        //private List<string> _boneList = new List<string>();
         public bool Disposed { get => _disposed; }
 
         public OscHandler()
@@ -88,21 +88,7 @@ namespace Everything_To_IMU_SlimeVR.Osc
             if (IsBundle(buffer))
             {
                 var bundle = ParseBundle(buffer);
-                if (bundle.Timestamp > DateTime.Now)
-                {
-                    // Wait for the specified timestamp
-                    _ = Task.Run(
-                        async () =>
-                        {
-                            await Task.Delay(bundle.Timestamp - DateTime.Now, cancelToken);
-                            OnOscBundle(bundle);
-                        },
-                        cancelToken
-                    );
-                } else
-                {
-                    OnOscBundle(bundle);
-                }
+                OnOscBundle(bundle);
             } else
             {
                 OnOscMessage(OscMessage.ParseMessage(buffer));
@@ -113,12 +99,7 @@ namespace Everything_To_IMU_SlimeVR.Osc
         {
             foreach (var message in bundle.Messages)
             {
-                try
-                {
-                    OnOscMessage(message);
-                } catch
-                {
-                }
+                OnOscMessage(message);
             }
         }
 
@@ -138,19 +119,15 @@ namespace Everything_To_IMU_SlimeVR.Osc
                 }
             } else if (loweredAddress.Contains("/vmc/ext/t"))
             {
-                foreach (float item in message.Arguments)
-                {
-                    //Plugin.Log.Verbose(item.ToString());
-                }
+                //foreach (float item in message.Arguments)
+                //{
+                //    //Plugin.Log.Verbose(item.ToString());
+                //}
             } else if (loweredAddress.Contains("/vmc/ext/bone/pos"))
             {
                 int index = 0;
                 string name = message.Arguments[index++] as string;
-                if (!_boneList.Contains(name))
-                {
-                    Console.WriteLine(name);
-                    _boneList.Add(name);
-                }
+
                 BoneUpdate?.Invoke(this, new Tuple<string, Vector3, Quaternion>(name,
                     new Vector3((float)message.Arguments[1],
                     (float)message.Arguments[2],
@@ -165,11 +142,6 @@ namespace Everything_To_IMU_SlimeVR.Osc
             {
                 int index = 0;
                 string name = message.Arguments[index++] as string;
-                if (!_boneList.Contains(name))
-                {
-                    Console.WriteLine(name);
-                    _boneList.Add(name);
-                }
             }
         }
 

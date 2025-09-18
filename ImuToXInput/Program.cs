@@ -1,9 +1,11 @@
-﻿using Everything_To_IMU_SlimeVR.Osc;
+﻿using DDRPadEmu;
+using Everything_To_IMU_SlimeVR.Osc;
 using Everything_To_IMU_SlimeVR.Tracking;
 using Nefarius.ViGEm.Client;
 using Nefarius.ViGEm.Client.Targets;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
 using Newtonsoft.Json.Linq;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Numerics;
@@ -15,18 +17,16 @@ namespace ImuToXInput
     {
         private static WebSocket ws;
         private static OscHandler _oscHandler;
+        private static DdrPadEmulator _ddrInputManager;
         private static ViGEmClient client;
         private static IXbox360Controller xbox;
 
         // Body-part → TrackerState
         private static Dictionary<string, TrackerState> trackers = new();
-        private static bool _chestCalibrated;
-        private static Vector3 _chestCalibration;
-        private static Vector3 _hipsCalibration;
-        private static bool _hipsCalibrated;
 
         static void Main()
         {
+            _ddrInputManager = new DdrPadEmulator();
             // ---- 1. Setup ViGEm ----
             client = new ViGEmClient();
             xbox = client.CreateXbox360Controller();
@@ -58,7 +58,7 @@ namespace ImuToXInput
 
         private static void _oscHandler_BoneUpdate(object? sender, Tuple<string, System.Numerics.Vector3, System.Numerics.Quaternion> e)
         {
-            HandleVmcMessage(e.Item1, e.Item3);
+            HandleVmcMessage(e.Item1, e.Item2, e.Item3);
         }
 
         static void ConnectWebSocket()
@@ -100,20 +100,26 @@ namespace ImuToXInput
             }
         }
 
-        static void HandleVmcMessage(string bodyPart, Quaternion rotation)
+        static void HandleVmcMessage(string bodyPart, Vector3 position, Quaternion rotation)
         {
             try
             {
                 var eulerCalibration = new Vector3();
+                var positionCalibration = new Vector3();
                 if (!trackers.ContainsKey(bodyPart))
                 {
                     eulerCalibration = rotation.QuaternionToEuler();
+                    positionCalibration = position;
+
                 } else
                 {
                     eulerCalibration = trackers[bodyPart].EulerCalibration;
+                    positionCalibration = trackers[bodyPart].PositionCalibration;
                 }
                 trackers[bodyPart] = new TrackerState
                 {
+                    PositionCalibration = positionCalibration,
+                    Position = position,
                     EulerCalibration = eulerCalibration,
                     BodyPart = bodyPart,
                     Ip = "",
@@ -159,16 +165,103 @@ namespace ImuToXInput
 
         static void UpdateController()
         {
-            switch (1)
+            string? runningGame = DetectGameProcess();
+            switch (runningGame)
             {
-                case 0:
-                    FPS();
-                    break;
-                case 1:
+                case "mirrorsedge":
                     MirrorsEdge();
                     break;
+                case "stepmania":
+                    StepMania();
+                    break;
+                default:
+                    FPS();
+                    break;
+            }
+        }
+
+        private static void StepMania()
+        {
+            if (trackers.TryGetValue("LeftLowerLeg", out var leftFoot) && trackers.TryGetValue("RightLowerLeg", out var rightFoot))
+            {
+                float deadZoneVertical = 0.9f;
+                float deadZoneHorizontal = 0.6f;
+
+                // Determine dominant direction per foot
+                (bool up, bool down, bool left, bool right) GetFootDirection(float x, float y)
+                {
+                    // Scale to -1..1
+                    x = Math.Clamp(x / 15f, -1f, 1f);
+                    y = Math.Clamp(y / 15f, -1f, 1f);
+
+                    // Ignore small movements
+                    if (Math.Abs(x) < deadZoneVertical && Math.Abs(y) < deadZoneHorizontal)
+                        return (false, false, false, false);
+
+                    // Pick dominant axis
+                    if (Math.Abs(x) > Math.Abs(y))
+                    {
+                        return x > 0 ? (true, false, false, false) : (false, true, false, false);
+                    } else
+                    {
+                        return y > 0 ? (false, false, true, false) : (false, false, false, true);
+                    }
+                }
+
+                var leftDir = GetFootDirection(leftFoot.Euler.X, leftFoot.Euler.Y);
+                var rightDir = GetFootDirection(rightFoot.Euler.X, rightFoot.Euler.Y);
+
+                // Combine foot inputs: trigger if either foot has the direction
+                bool upState = (leftDir.up && leftFoot.CloseToCalibratedY) || (rightDir.up && rightFoot.CloseToCalibratedY);
+                bool downState = (leftDir.down && leftFoot.CloseToCalibratedY) || (rightDir.down && rightFoot.CloseToCalibratedY);
+                bool leftState = (leftDir.left && leftFoot.CloseToCalibratedY) || (rightDir.left && rightFoot.CloseToCalibratedY);
+                bool rightState = (leftDir.right && leftFoot.CloseToCalibratedY) || (rightDir.right && rightFoot.CloseToCalibratedY);
+
+                // Send to virtual controller
+                xbox.SetButtonState(Xbox360Button.Up, upState);
+                xbox.SetButtonState(Xbox360Button.Down, downState);
+                xbox.SetButtonState(Xbox360Button.Left, leftState);
+                xbox.SetButtonState(Xbox360Button.Right, rightState);
+
+                // Debug
+                Console.SetCursorPosition(0, 0);
+                Console.WriteLine($"Up:    {upState}");
+                Console.WriteLine($"Down:  {downState}");
+                Console.WriteLine($"Left:  {leftState}");
+                Console.WriteLine($"Right: {rightState}");
+                Console.WriteLine();
+
+                Console.WriteLine($"Left Pos:  {leftFoot.CalibratedPosition:F3}");
+                Console.WriteLine($"Left Pos:  {leftFoot.Position:F3}");
+                Console.WriteLine($"Left Pos:  {leftFoot.PositionCalibration:F3}");
+
+                Console.WriteLine($"Right Pos:  {rightFoot.CalibratedPosition:F3}");
+                Console.WriteLine($"Right Pos:  {rightFoot.Position:F3}");
+                Console.WriteLine($"Right Pos:  {rightFoot.PositionCalibration:F3}");
+
+
+                Console.WriteLine($"Left X:  {leftFoot.Euler.X:F3}");
+                Console.WriteLine($"Left Y:  {leftFoot.Euler.Y:F3}");
+                Console.WriteLine($"Right X: {rightFoot.Euler.X:F3}");
+                Console.WriteLine($"Right Y: {rightFoot.Euler.Y:F3}");
+            }
+        }
+
+        static string? DetectGameProcess()
+        {
+            // Add the executable names (without .exe) of games you want to detect
+            string[] supportedGames = { "MirrorsEdge", "stepmania" };
+
+            foreach (var game in supportedGames)
+            {
+                var process = Process.GetProcessesByName(game).FirstOrDefault();
+                if (process != null)
+                {
+                    return game;
+                }
             }
 
+            return "";
         }
 
         private static void MirrorsEdge()
@@ -266,7 +359,7 @@ namespace ImuToXInput
 
             if (trackers.TryGetValue("LeftLowerLeg", out var leftAnkle))
             {
-             //   xbox.SetButtonState(Xbox360Button.Back, leftAnkle.Euler.X < 1);
+                //   xbox.SetButtonState(Xbox360Button.Back, leftAnkle.Euler.X < 1);
             }
 
             if (trackers.TryGetValue("RightLowerLeg", out var rightAnkle))

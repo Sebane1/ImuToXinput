@@ -10,10 +10,14 @@ namespace ImuToXInput
 {
     public class TrackerState
     {
+        private Vector3 _position;
+        private Vector3 _positionCalibration;
+
         private Quaternion _rotation;
         private Vector3 _euler;
 
         private Vector3 _eulerCalibration;
+
 
         public int TrackerId { get; set; }
         public string BodyPart { get; set; }
@@ -32,8 +36,11 @@ namespace ImuToXInput
             }
         }
 
-
-
+        public Vector3 CalibratedPosition { get { return _position - _positionCalibration; } }
+        public bool CloseToCalibratedY
+        {
+            get { return CalibratedPosition.Y < 1f; }
+        }
         public Vector3 SmoothRotation { get; set; }
 
         // Button hysteresis states
@@ -43,21 +50,14 @@ namespace ImuToXInput
         public bool ButtonYState { get; set; }
         public Vector3 Euler { get => _eulerCalibration - _euler; set => _euler = value; }
         public Vector3 EulerCalibration { get => _eulerCalibration; set => _eulerCalibration = value; }
-
-        // Apply smoothing
-        //public void ApplySmoothing(float alpha = 0.7f)
-        //{
-        //   SmoothRotation = new  Vector3(SmoothRotation.X * alpha + X * (1 - alpha);
-        //    SmoothY = SmoothY * alpha + Y * (1 - alpha);
-        //    SmoothZ = SmoothZ * alpha + Z * (1 - alpha);
-        //}
+        public Vector3 Position { get => _position; set => _position = value; }
+        public Vector3 PositionCalibration { get => _positionCalibration; set => _positionCalibration = value; }
 
         // Get trigger value (non-linear scaling)
         public byte GetTriggerValue()
         {
             float norm = (Rotation.Y + 1f) / 2f;
             norm = (float)Math.Pow(norm, 1.5f);
-            //Console.WriteLine(norm);
             return (byte)Math.Clamp(norm * 255f, 0, 255);
         }
     }

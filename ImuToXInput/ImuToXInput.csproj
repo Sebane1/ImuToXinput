@@ -19,13 +19,4 @@
     <ProjectReference Include="..\SlimeImuProtocol\SlimeImuProtocol.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="Google.FlatBuffers">
-      <HintPath>Google.FlatBuffers.dll</HintPath>
-    </Reference>
-    <Reference Include="SlimeVR-SolarXR-Protocol">
-      <HintPath>SlimeVR-SolarXR-Protocol.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
 </Project>

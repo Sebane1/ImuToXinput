@@ -1,23 +1,17 @@
-﻿using Everything_To_IMU_SlimeVR.Osc;
-using Everything_To_IMU_SlimeVR.Tracking;
+﻿using AutoUpdaterDotNET;
 using Nefarius.ViGEm.Client;
 using Nefarius.ViGEm.Client.Targets;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
-using Newtonsoft.Json.Linq;
 using SlimeImuProtocol.SlimeVR;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Net;
 using System.Net.Sockets;
 using System.Numerics;
-using System.Reflection.Metadata;
-using WebSocketSharp;
 
 namespace ImuToXInput
 {
     class Program
     {
-        private static WebSocket ws;
         private static ViGEmClient client;
         private static SlimeVRClient slimeVRClient;
         private static IXbox360Controller xbox;
@@ -28,33 +22,76 @@ namespace ImuToXInput
 
         static void Main()
         {
-            // ---- 1. Setup ViGEm ----
-            client = new ViGEmClient();
-            slimeVRClient = new SlimeVRClient();
-            slimeVRClient.Start();
-            xbox = client.CreateXbox360Controller();
-            xbox.Connect();
-            xbox.FeedbackReceived += (s, e) =>
+            bool launchForm = true;
+            try
             {
-                // LEFT_HAND haptic
-                if (trackers.TryGetValue("LEFT_HAND", out var leftHand) && !string.IsNullOrEmpty(leftHand.Ip))
+                AutoUpdater.DownloadPath = AppDomain.CurrentDomain.BaseDirectory;
+                AutoUpdater.Synchronous = true;
+                AutoUpdater.Mandatory = true;
+                AutoUpdater.UpdateMode = Mode.ForcedDownload;
+                AutoUpdater.Start("https://raw.githubusercontent.com/Sebane1/ImuToXinput/main/update.xml");
+                AutoUpdater.ApplicationExitEvent += delegate ()
                 {
-                    byte intensity = (byte)Math.Min(100, (e.LargeMotor / 65535.0) * 100);
-                    if (intensity > 0) SendHapticToTracker(leftHand.Ip, intensity, 150);
-                }
+                    launchForm = false;
+                };
 
-                // RIGHT_HAND haptic
-                if (trackers.TryGetValue("RIGHT_HAND", out var rightHand) && !string.IsNullOrEmpty(rightHand.Ip))
-                {
-                    byte intensity = (byte)Math.Min(100, (e.SmallMotor / 65535.0) * 100);
-                    if (intensity > 0) SendHapticToTracker(rightHand.Ip, intensity, 150);
-                }
-            };
-            trackers = slimeVRClient.Trackers;
-            while (true)
+            } catch
             {
-                UpdateController();
-                Thread.Sleep(10);
+
+            }
+
+            if (launchForm)
+            {
+                client = new ViGEmClient();
+                slimeVRClient = new SlimeVRClient();
+                slimeVRClient.Start();
+                xbox = client.CreateXbox360Controller();
+                xbox.Connect();
+                xbox.FeedbackReceived += (s, e) =>
+                {
+                    var intensityLeft = e.LargeMotor / 255f;
+                    var intensityRight = e.SmallMotor / 255f;
+                    // LEFT_HAND haptic
+                    if (trackers.TryGetValue("LEFT_HAND", out var leftHand) && !string.IsNullOrEmpty(leftHand.Ip))
+                    {
+                        if (intensityLeft > 0) SendHapticToTracker(leftHand.Ip, intensityLeft, 150);
+                    }
+                    if (trackers.TryGetValue("LEFT_LOWER_ARM", out var leftLowerArm) && !string.IsNullOrEmpty(leftLowerArm.Ip))
+                    {
+                        if (intensityLeft > 0) SendHapticToTracker(leftLowerArm.Ip, intensityLeft, 150);
+                    }
+                    if (trackers.TryGetValue("LEFT_UPPER_ARM", out var leftUpperArm) && !string.IsNullOrEmpty(leftUpperArm.Ip))
+                    {
+                     
+                        if (intensityLeft > 0)
+                        {
+                            SendHapticToTracker(leftLowerArm.Ip, intensityLeft, 150);
+                        }
+                    }
+
+                    // RIGHT_HAND haptic
+                    if (trackers.TryGetValue("RIGHT_HAND", out var rightHand) && !string.IsNullOrEmpty(rightHand.Ip))
+                    {
+                        if (intensityRight > 0) SendHapticToTracker(rightHand.Ip, intensityRight, 150);
+                    }
+                    if (trackers.TryGetValue("RIGHT_LOWER_ARM", out var rightLowerArm) && !string.IsNullOrEmpty(rightLowerArm.Ip))
+                    {
+                        if (intensityRight > 0) SendHapticToTracker(rightLowerArm.Ip, intensityRight, 150);
+                    }
+                    if (trackers.TryGetValue("RIGHT_UPPER_ARM", out var rightUpperArm) && !string.IsNullOrEmpty(rightUpperArm.Ip))
+                    {
+                        if (intensityRight > 0)
+                        {
+                            SendHapticToTracker(rightUpperArm.Ip, intensityRight, 150);
+                        }
+                    }
+                };
+                trackers = slimeVRClient.Trackers;
+                while (true)
+                {
+                    UpdateController();
+                    Thread.Sleep(8);
+                }
             }
         }
 
@@ -251,8 +288,8 @@ namespace ImuToXInput
         {
             if (trackers.TryGetValue("HEAD", out var head))
             {
-                xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(head.Euler.X * 3));
-                xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(-head.Euler.Z * 3f));
+                xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(-head.Euler.X * 2));
+                xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(-head.Euler.Y * 1f));
             }
             if (trackers.TryGetValue("CHEST", out var chest))
             {
@@ -307,8 +344,8 @@ namespace ImuToXInput
         {
             if (trackers.TryGetValue("HEAD", out var head))
             {
-                xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(head.Euler.X * 1));
-                xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(-head.Euler.Z * 1f));
+                xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(-head.Euler.X * 2));
+                xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(-head.Euler.Y * 1f));
             }
             if (trackers.TryGetValue("CHEST", out var chest))
             {
@@ -448,16 +485,24 @@ namespace ImuToXInput
         {
             try
             {
-                if (!string.IsNullOrEmpty(trackerIp))
+                Task.Run(() =>
                 {
-                    var data = new PacketBuilder("Test").BuildHapticPacket(intensity, duration);
-                    if (!_hapticClients.ContainsKey(trackerIp))
+                    if (!string.IsNullOrEmpty(trackerIp))
                     {
-                        _hapticClients[trackerIp] = new UdpClient();
-                        _hapticClients[trackerIp].Connect(trackerIp, 6969);
+                        var packetBuilder = new PacketBuilder("Test");
+                        var data = packetBuilder.BuildHapticPacket(intensity, duration);
+                        if (!_hapticClients.ContainsKey(trackerIp))
+                        {
+                            _hapticClients[trackerIp] = new UdpClient();
+                            _hapticClients[trackerIp].Connect(trackerIp, 6969);
+                        }
+                        _hapticClients[trackerIp].Send(data, data.Length);
+
+                        Thread.Sleep(duration);
+                        var endData = packetBuilder.BuildHapticPacket(0, 0);
+                        _hapticClients[trackerIp].Send(endData, data.Length);
                     }
-                    _hapticClients[trackerIp].Send(data, data.Length);
-                }
+                });
             } catch (Exception ex)
             {
                 Console.WriteLine($"Failed to send haptic: {ex.Message}");

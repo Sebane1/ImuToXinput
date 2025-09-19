@@ -12,6 +12,7 @@ Stepmania controls give you a virtual invisible dance pad laid out like the foll
 
 
 How to use:
+
 Install the VIGEM bus driver.
 https://vigembusdriver.com/
 

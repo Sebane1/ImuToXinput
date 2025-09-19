@@ -7,6 +7,7 @@ Over time this project aims to improve gesture controls and inputs for interfaci
 Current configurations have a head tracker for looking around, hip tracker for forwards/backwards movement and strafing, elbow trackers for melee, shooting, and throwing in game explosives, weapon switching and pickups mapped to feet, etc.
 
 Stepmania controls give you a virtual invisible dance pad laid out like the following, relying on hip, knee, thigh, and foot trackers to inform body placement:
+
 <img width="185" height="149" alt="image" src="https://github.com/user-attachments/assets/3b67304e-48f4-4558-a213-60100c6cd37d" />
 
 

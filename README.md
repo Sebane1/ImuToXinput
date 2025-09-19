@@ -1,4 +1,5 @@
 An experimental project that takes IMU data from SlimeVR and attempts to translate it into usable XInput controller data. The project simulates an Xbox controller, or a dance pad for games such as Stepmania with some basic autodetection of which style of game is running.
+
 Proof of concept video:
 https://www.youtube.com/watch?v=ynCTgu7mtcQ
 

@@ -21,5 +21,5 @@ https://slimevr.dev/
 
 Connect and calibrate trackers in the SlimeVR software, and follow calibration steps.
 
-Run ImuToXInput after calibrating in SlimeVR (Re-calibrating SlimeVR requires re-starting ImuToXInput afterwards):
+Run ImuToXInput after calibrating in SlimeVR, remain in neutral position until fully loaded (Re-calibrating SlimeVR requires re-starting ImuToXInput afterwards):
 https://github.com/Sebane1/ImuToXinput/releases

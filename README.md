@@ -1,5 +1,8 @@
 An experimental project that takes IMU data from SlimeVR and attempts to translate it into usable XInput controller data.
 The project simulates an Xbox controller, or a dance pad for games such as Stepmania with some basic autodetecion of which style of game is running.
+Proof of concept video:
+https://www.youtube.com/watch?v=ynCTgu7mtcQ
+
 
 Presently the project has been experimentally tested with Halo Combat Evolved, Mirrors Edge, and Stepmania.
 Over time this project aims to improve gesture controls and inputs for interfacing with games in a way that doesnt require hands or fingers,

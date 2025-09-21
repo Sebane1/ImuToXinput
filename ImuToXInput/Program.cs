@@ -100,7 +100,7 @@ namespace ImuToXInput
             string? runningGame = DetectGameProcess();
             switch (runningGame)
             {
-                case "mirrorsedge":
+                case "MirrorsEdge":
                     MirrorsEdge();
                     break;
                 case "stepmania":
@@ -109,9 +109,71 @@ namespace ImuToXInput
                 case "ffxiv_dx11":
                     FFXIV();
                     break;
+                case "portal":
+                case "portal2":
+                    Portal();
+                    break;
                 default:
                     FPS();
                     break;
+            }
+        }
+
+        private static void Portal()
+        {
+            if (trackers.TryGetValue("HEAD", out var head))
+            {
+                xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(-head.Euler.X * 2));
+                xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(-head.Euler.Y * 1f));
+            }
+            if (trackers.TryGetValue("CHEST", out var chest))
+            {
+            }
+            if (trackers.TryGetValue("HIP", out var hips))
+            {
+                xbox.SetAxisValue(Xbox360Axis.LeftThumbX, ApplyDeadzone(hips.Euler.Z * 2));
+                xbox.SetAxisValue(Xbox360Axis.LeftThumbY, ApplyDeadzone(-hips.Euler.X * 2));
+            }
+            if (trackers.TryGetValue("RIGHT_UPPER_ARM", out var rightHand))
+            {
+                xbox.SetButtonState(Xbox360Button.B, rightHand.Euler.Y - chest.Euler.Y > 30f);
+
+                xbox.SetSliderValue(Xbox360Slider.RightTrigger, (byte)(rightHand.Euler.Y + chest.Euler.Y < -15f ? 255 : 0));
+            }
+            if (trackers.TryGetValue("LEFT_UPPER_ARM", out var leftHand))
+            {
+                bool triggerValue = leftHand.Euler.Y + chest.Euler.Y > 10f;
+                xbox.SetSliderValue(Xbox360Slider.LeftTrigger, (byte)(triggerValue ? 255 : 0));
+            }
+
+            if (trackers.TryGetValue("LEFT_FOOT", out var leftFoot))
+            {
+                xbox.SetButtonState(Xbox360Button.A, leftFoot.Euler.X < -20);
+
+                //xbox.SetButtonState(Xbox360Button.Y, leftFoot.Euler.Z > -20);
+
+                xbox.SetButtonState(Xbox360Button.LeftShoulder, leftFoot.Euler.Y > 5);
+            }
+
+            if (trackers.TryGetValue("RIGHT_FOOT", out var rightFoot))
+            {
+                xbox.SetButtonState(Xbox360Button.A, rightFoot.Euler.X < -20);
+
+                //xbox.SetButtonState(Xbox360Button.X, rightFoot.Euler.Z > 20);
+
+                xbox.SetButtonState(Xbox360Button.RightShoulder, rightFoot.Euler.Y < -5);
+            }
+
+            if (trackers.TryGetValue("LEFT_LOWER_LEG", out var leftAnkle))
+            {
+                //   xbox.SetButtonState(Xbox360Button.Back, leftAnkle.Euler.X < 1);
+            }
+
+            if (trackers.TryGetValue("RIGHT_LOWER_LEG", out var rightAnkle))
+            {
+                //var value = rightAnkle.Euler.X > 1;
+                //Console.WriteLine(value);
+                //xbox.SetButtonState(Xbox360Button.Start, value);
             }
         }
 
@@ -151,10 +213,10 @@ namespace ImuToXInput
                     {
                         if (mag > diagThreshold)
                         {
-                            if (dir.X < -0.5f && dir.Y < -0.5f) return (false, false, false, false, true, false, false, false); // ↖
-                            if (dir.X > 0.5f && dir.Y < -0.5f) return (false, false, false, false, false, true, false, false); // ↗
-                            if (dir.X < -0.5f && dir.Y > 0.5f) return (false, false, false, false, false, false, true, false); // ↙
-                            if (dir.X > 0.5f && dir.Y > 0.5f) return (false, false, false, false, false, false, false, true); // ↘
+                            if (dir.X < -0.5f && -dir.Y < -0.5f) return (false, false, false, false, true, false, false, false); // ↖
+                            if (dir.X > 0.5f && -dir.Y < -0.5f) return (false, false, false, false, false, true, false, false); // ↗
+                            if (dir.X < -0.5f && -dir.Y > 0.5f) return (false, false, false, false, false, false, true, false); // ↙
+                            if (dir.X > 0.5f && -dir.Y > 0.5f) return (false, false, false, false, false, false, false, true); // ↘
                         }
 
                         // Otherwise fall back to cardinals if past threshold
@@ -223,7 +285,6 @@ namespace ImuToXInput
                 Console.WriteLine($"Right Calibration Reference Pos:  {rightAnkle.PositionCalibration:F3}");
                 Console.WriteLine($"Right Floor Relative Pos:  {rightAnkle.FloorRelativePosition:F3}");
 
-
                 Console.WriteLine($"Left X:  {leftAnkle.Euler.X}");
                 Console.WriteLine($"Left Y:  {leftAnkle.Euler.Z}");
                 Console.WriteLine($"Right X: {rightAnkle.Euler.X}");
@@ -270,7 +331,7 @@ namespace ImuToXInput
         static string? DetectGameProcess()
         {
             // Add the executable names (without .exe) of games you want to detect
-            string[] supportedGames = { "MirrorsEdge", "stepmania", "ffxiv_dx11" };
+            string[] supportedGames = { "MirrorsEdge", "stepmania", "ffxiv_dx11", "portal", "portal2" };
 
             foreach (var game in supportedGames)
             {
@@ -470,7 +531,7 @@ namespace ImuToXInput
             }
         }
 
-        static short ApplyDeadzone(float value, float deadzone = 0.15f)
+        static short ApplyDeadzone(float value, float deadzone = 0.2f)
         {
             // Console.WriteLine(value);
             value = Math.Clamp(value / 15, -1f, 1f);

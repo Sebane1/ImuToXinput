@@ -1,4 +1,5 @@
-﻿using AutoUpdaterDotNET;
+using AutoUpdaterDotNET;
+using ImuToXInput.Config;
 using Nefarius.ViGEm.Client;
 using Nefarius.ViGEm.Client.Targets;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
@@ -19,6 +20,7 @@ namespace ImuToXInput
         private static ConcurrentDictionary<string, UdpClient> _hapticClients = new ConcurrentDictionary<string, UdpClient>();
         // Body-part → TrackerState
         private static Dictionary<string, TrackerState> trackers = new();
+        private static LoadedConfig? _loadedConfig;
 
         static void Main()
         {
@@ -62,7 +64,7 @@ namespace ImuToXInput
                     }
                     if (trackers.TryGetValue("LEFT_UPPER_ARM", out var leftUpperArm) && !string.IsNullOrEmpty(leftUpperArm.Ip))
                     {
-                     
+
                         if (intensityLeft > 0)
                         {
                             SendHapticToTracker(leftLowerArm.Ip, intensityLeft, 150);
@@ -87,6 +89,9 @@ namespace ImuToXInput
                     }
                 };
                 trackers = slimeVRClient.Trackers;
+                _loadedConfig = ConfigLoader.Load();
+                if (_loadedConfig == null)
+                    Console.WriteLine("No configs folder found; using built-in game mappings.");
                 while (true)
                 {
                     UpdateController();
@@ -98,13 +103,30 @@ namespace ImuToXInput
         static void UpdateController()
         {
             string? runningGame = DetectGameProcess();
+
+            // StepMania / DDR pad mode stays hardcoded (unchanged)
+            if (string.Equals(runningGame, "stepmania", StringComparison.OrdinalIgnoreCase))
+            {
+                StepMania();
+                return;
+            }
+
+            // Config-driven mappings for all other games
+            if (_loadedConfig != null)
+            {
+                var profile = ConfigLoader.GetProfileForProcess(_loadedConfig, runningGame);
+                if (profile != null)
+                {
+                    ConfigApplier.Apply(profile, trackers, xbox);
+                    return;
+                }
+            }
+
+            // Fallback when no config or no matching profile: legacy hardcoded modes
             switch (runningGame)
             {
                 case "MirrorsEdge":
                     MirrorsEdge();
-                    break;
-                case "stepmania":
-                    StepMania();
                     break;
                 case "ffxiv_dx11":
                     FFXIV();
@@ -177,6 +199,48 @@ namespace ImuToXInput
             }
         }
 
+        private static (bool up, bool down, bool left, bool right, bool upLeft, bool upRight, bool downLeft, bool downRight)
+            GetFootDirection(TrackerState ankle, float deadZone, float diagThreshold, float cardThreshold)
+        {
+            float x = ankle.CalibratedPosition.X;
+            float z = ankle.CalibratedPosition.Z;
+
+            if (Math.Abs(x) < deadZone && Math.Abs(z) < deadZone)
+                return (false, false, false, false, false, false, false, false);
+
+            var dir = new Vector2(x, z);
+            float mag = dir.Length();
+
+            if (mag < deadZone)
+                return (false, false, false, false, false, false, false, false);
+
+            dir /= mag; // normalize
+
+            // Only allow diagonals if the foot is pushed far enough from center
+            if (ankle.CloseToCalibratedY)
+            {
+                if (mag > diagThreshold)
+                {
+                    if (dir.X < -0.5f && -dir.Y < -0.5f) return (false, false, false, false, true, false, false, false); // ↖
+                    if (dir.X > 0.5f && -dir.Y < -0.5f) return (false, false, false, false, false, true, false, false); // ↗
+                    if (dir.X < -0.5f && -dir.Y > 0.5f) return (false, false, false, false, false, false, true, false); // ↙
+                    if (dir.X > 0.5f && -dir.Y > 0.5f) return (false, false, false, false, false, false, false, true); // ↘
+                }
+
+                // Otherwise fall back to cardinals if past threshold
+                if (Math.Abs(dir.Y) > Math.Abs(dir.X))
+                {
+                    if (dir.Y < -cardThreshold) return (false, true, false, false, false, false, false, false); // ↑
+                    if (dir.Y > cardThreshold) return (true, false, false, false, false, false, false, false); // ↓
+                } else
+                {
+                    if (dir.X < -cardThreshold) return (false, false, true, false, false, false, false, false); // ←
+                    if (dir.X > cardThreshold) return (false, false, false, true, false, false, false, false); // →
+                }
+            }
+            return (false, false, false, false, false, false, false, false);
+        }
+
         private static void StepMania()
         {
             if (((trackers.TryGetValue("LEFT_FOOT", out var leftAnkle)
@@ -191,50 +255,8 @@ namespace ImuToXInput
                 float diagThreshold = 0.35f;  // how "far out" diagonals need to be
                 float cardThreshold = 0.50f;  // cardinals kick in after this
 
-                (bool up, bool down, bool left, bool right,
-                 bool upLeft, bool upRight, bool downLeft, bool downRight) GetFootDirection(TrackerState ankle)
-                {
-                    float x = ankle.CalibratedPosition.X;
-                    float z = ankle.CalibratedPosition.Z;
-
-                    if (Math.Abs(x) < deadZone && Math.Abs(z) < deadZone)
-                        return (false, false, false, false, false, false, false, false);
-
-                    var dir = new Vector2(x, z);
-                    float mag = dir.Length();
-
-                    if (mag < deadZone)
-                        return (false, false, false, false, false, false, false, false);
-
-                    dir /= mag; // normalize
-
-                    // Only allow diagonals if the foot is pushed far enough from center
-                    if (ankle.CloseToCalibratedY)
-                    {
-                        if (mag > diagThreshold)
-                        {
-                            if (dir.X < -0.5f && -dir.Y < -0.5f) return (false, false, false, false, true, false, false, false); // ↖
-                            if (dir.X > 0.5f && -dir.Y < -0.5f) return (false, false, false, false, false, true, false, false); // ↗
-                            if (dir.X < -0.5f && -dir.Y > 0.5f) return (false, false, false, false, false, false, true, false); // ↙
-                            if (dir.X > 0.5f && -dir.Y > 0.5f) return (false, false, false, false, false, false, false, true); // ↘
-                        }
-
-                        // Otherwise fall back to cardinals if past threshold
-                        if (Math.Abs(dir.Y) > Math.Abs(dir.X))
-                        {
-                            if (dir.Y < -cardThreshold) return (false, true, false, false, false, false, false, false); // ↑
-                            if (dir.Y > cardThreshold) return (true, false, false, false, false, false, false, false); // ↓
-                        } else
-                        {
-                            if (dir.X < -cardThreshold) return (false, false, true, false, false, false, false, false); // ←
-                            if (dir.X > cardThreshold) return (false, false, false, true, false, false, false, false); // →
-                        }
-                    }
-                    return (false, false, false, false, false, false, false, false);
-                }
-
-                var leftDir = GetFootDirection(leftAnkle);
-                var rightDir = GetFootDirection(rightAnkle);
+                var leftDir = GetFootDirection(leftAnkle, deadZone, diagThreshold, cardThreshold);
+                var rightDir = GetFootDirection(rightAnkle, deadZone, diagThreshold, cardThreshold);
 
                 CheckHaptic(leftDir, leftAnkle.Ip);
                 CheckHaptic(rightDir, rightAnkle.Ip);
@@ -292,8 +314,7 @@ namespace ImuToXInput
             }
         }
 
-        static void CheckHaptic((bool up, bool down, bool left, bool right,
-                 bool upLeft, bool upRight, bool downLeft, bool downRight) dir, string ip)
+        static void CheckHaptic((bool up, bool down, bool left, bool right, bool upLeft, bool upRight, bool downLeft, bool downRight) dir, string ip)
         {
             if (FootHitButton(dir.up, dir.down, dir.left, dir.right, dir.upLeft, dir.downLeft, dir.upRight, dir.downRight))
             {

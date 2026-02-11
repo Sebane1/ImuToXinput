@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -18,6 +18,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SlimeImuProtocol\SlimeImuProtocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="configs\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

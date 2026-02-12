@@ -3,10 +3,6 @@ using System.Text.RegularExpressions;
 
 namespace ImuToXInput.Config
 {
-    /// <summary>
-    /// Bidirectional conversion between GameProfile and a C#-style script representation.
-    /// Script format is line-based; comments start with //.
-    /// </summary>
     public static class ScriptFormat
     {
         public static string FormatProfile(GameProfile profile)
@@ -86,9 +82,6 @@ namespace ImuToXInput.Config
             return s.Replace("\\\"", "\"").Replace("\\\\", "\\");
         }
 
-        /// <summary>
-        /// Parse script text into a new GameProfile. Throws on syntax errors.
-        /// </summary>
         public static GameProfile ParseProfile(string script)
         {
             var profile = new GameProfile
@@ -163,7 +156,6 @@ namespace ImuToXInput.Config
 
         private static AxisMapping? ParseAxisLine(string line)
         {
-            // Tracker.Source [* scale] [invert] -> Axis
             var arrow = line.IndexOf("->", StringComparison.Ordinal);
             if (arrow < 0) return null;
             var right = line.Substring(arrow + 2).Trim();
@@ -189,7 +181,6 @@ namespace ImuToXInput.Config
 
         private static (MappingCondition? cond, string? output) ParseWhenLine(string line, int lineNum)
         {
-            // when <expr> -> Output
             if (!line.StartsWith("when ", StringComparison.OrdinalIgnoreCase)) return (null, null);
             var rest = line.Substring(5).Trim();
             var arrow = rest.IndexOf("->", StringComparison.Ordinal);
@@ -202,10 +193,6 @@ namespace ImuToXInput.Config
 
         private static MappingCondition? ParseCondition(string expr)
         {
-            // Tracker.Euler.X < 20
-            // TrackerA.Euler.Y - TrackerB.Euler.Y > 30
-            // TrackerA.Euler.Y + TrackerB.Euler.Y < -15
-            // Tracker.FloorRelY > 0.1
             expr = expr.Trim();
             var opMatch = Regex.Match(expr, @"\s+(<|>|<=|>=)\s+(-?[\d.]+)\s*$");
             if (!opMatch.Success) return null;
@@ -216,7 +203,6 @@ namespace ImuToXInput.Config
             var op = SymbolToOp(opStr);
             var leftPart = expr.Substring(0, opMatch.Index).Trim();
 
-            // Diff: A.Euler.Y - B.Euler.Y
             var diffIdx = leftPart.IndexOf(" - ", StringComparison.Ordinal);
             if (diffIdx > 0)
             {
@@ -225,7 +211,6 @@ namespace ImuToXInput.Config
                 if (ParseEulerPart(a, out var trackerA, out var comp) && ParseEulerPart(b, out var trackerB, out _))
                     return new EulerDiffCondition { Type = "euler_diff", TrackerA = trackerA, TrackerB = trackerB, Component = comp, Op = op, Value = value };
             }
-            // Sum: A.Euler.Y + B.Euler.Y
             var sumIdx = leftPart.IndexOf(" + ", StringComparison.Ordinal);
             if (sumIdx > 0)
             {
@@ -234,13 +219,11 @@ namespace ImuToXInput.Config
                 if (ParseEulerPart(a, out var trackerA, out var comp) && ParseEulerPart(b, out var trackerB, out _))
                     return new EulerSumCondition { Type = "euler_sum", TrackerA = trackerA, TrackerB = trackerB, Component = comp, Op = op, Value = value };
             }
-            // Single: Tracker.Euler.X  or  Tracker.FloorRelY
             if (leftPart.Contains(".Euler.", StringComparison.Ordinal))
             {
                 if (ParseEulerPart(leftPart, out var tracker, out var comp))
                     return new EulerThresholdCondition { Type = "euler_threshold", Tracker = tracker, Component = comp, Op = op, Value = value };
             }
-            // Position: Tracker.FloorRelY, Tracker.CalibratedX, etc.
             var dot = leftPart.IndexOf('.');
             if (dot > 0)
             {
@@ -254,11 +237,10 @@ namespace ImuToXInput.Config
         private static bool ParseEulerPart(string part, out string tracker, out string component)
         {
             tracker = ""; component = "";
-            // TRACKER.Euler.X
             var euler = part.IndexOf(".Euler.", StringComparison.OrdinalIgnoreCase);
             if (euler < 0) return false;
             tracker = part.Substring(0, euler).Trim();
-            component = part.Substring(euler + 7).Trim(); // after ".Euler."
+            component = part.Substring(euler + 7).Trim();
             if (component.Length != 1 || "XYZ".IndexOf(component.ToUpperInvariant()[0]) < 0) return false;
             component = component.ToUpperInvariant();
             return true;

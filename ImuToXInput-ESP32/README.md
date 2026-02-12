@@ -13,19 +13,20 @@ Future goals: support other console controller report descriptors (e.g. DualShoc
 
 ## Key features
 
-| Feature | Description |
-|--------|-------------|
-| **WiFi provisioning** | On first boot (or when not configured), the dongle starts an AP (e.g. `ImuToXInput-Setup`). Connect with phone/PC, open the captive portal or `http://192.168.4.1`, enter your WiFi SSID/password and (optionally) SolarXR server IP. Credentials are saved and the dongle joins your network. |
-| **SolarXR / SlimeVR input** | Connect to a SolarXR/SlimeVR server on the same network (default `ws://<server-ip>:21110`). Receive tracker poses (position, rotation) and optional skeleton. Same data source as the PC ImuToXInput app. |
-| **Xbox 360 controller over USB** | Translate tracker data into thumbsticks, buttons, and triggers using the same mapping rules as the PC app. Expose as a **wired Xbox 360–compatible USB HID gamepad** so consoles/PC see a normal controller. |
-| **Config files** | Store multiple game configs (e.g. `default.json`, `portal.json`) on the device (LittleFS/SPIFFS). Select active config via web UI or a simple “next config” action. Same JSON schema as [ImuToXInput configs](https://github.com/Sebane1/ImuToinput): `axisMappings`, `buttonMappings`, `triggerMappings`, conditions (euler_threshold, euler_diff, euler_sum, position_threshold). |
+| Feature                          | Description                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **WiFi provisioning**            | On first boot (or when not configured), the dongle starts an AP (e.g. `ImuToXInput-Setup`). Connect with phone/PC, open the captive portal or `http://192.168.4.1`, enter your WiFi SSID/password and (optionally) SolarXR server IP. Credentials are saved and the dongle joins your network.                                                                                      |
+| **SolarXR / SlimeVR input**      | Connect to a SolarXR/SlimeVR server on the same network (default `ws://<server-ip>:21110`). Receive tracker poses (position, rotation) and optional skeleton. Same data source as the PC ImuToXInput app.                                                                                                                                                                           |
+| **Xbox 360 controller over USB** | Translate tracker data into thumbsticks, buttons, and triggers using the same mapping rules as the PC app. Expose as a **wired Xbox 360–compatible USB HID gamepad** so consoles/PC see a normal controller.                                                                                                                                                                        |
+| **Config files**                 | Store multiple game configs (e.g. `default.json`, `portal.json`) on the device (LittleFS/SPIFFS). Select active config via web UI or a simple “next config” action. Same JSON schema as [ImuToXInput configs](https://github.com/Sebane1/ImuToinput): `axisMappings`, `buttonMappings`, `triggerMappings`, conditions (euler_threshold, euler_diff, euler_sum, position_threshold). |
 
 ---
 
 ## Hardware
 
-- **ESP32 with USB** – Board must support **USB** (e.g. **ESP32-S2** or **ESP32-S3** with native USB). Classic ESP32 (no native USB) would need a separate USB-HID chip or a different approach.
-- **Tested/target dongle:** [AliExpress ESP32 controller dongle (item 1005006594238178)](https://www.aliexpress.com/item/1005006594238178.html). Confirm whether it is ESP32-S2 or S3 (or another variant) and set the matching board in `platformio.ini`.
+- **ESP32-S2/S3 with USB** – Board with native USB (e.g. **ESP32-S2** or **ESP32-S3**) exposes a wired Xbox 360–style USB HID gamepad.
+- **ESP32-PICO-D4 (classic ESP32)** – No native USB; uses **BLE HID gamepad** instead. Works with PC, Steam Deck, and Mayflash adapters (e.g. Magic-S PRO 2) that support generic Bluetooth controllers.
+- **Tested/target dongle:** [AliExpress ESP32 controller dongle (item 1005006594238178)](https://www.aliexpress.com/item/1005006594238178.html). Confirm whether it is ESP32-S2 or S3 and set the matching board in `platformio.ini`.
 
 ---
 
@@ -99,7 +100,8 @@ ImuToXInput-ESP32/
 3. Enter your home WiFi SSID/password and, if needed, the SolarXR/SlimeVR server IP (e.g. your PC’s IP).
 4. Save; the dongle reboots and connects to your network.
 5. Ensure SlimeVR Server (or SolarXR app) is running on the configured host and listening on port 21110.
-6. Plug the dongle into the console/PC via USB; it should enumerate as an Xbox 360 controller and start applying the active config.
+6. **USB (S2/S3):** Plug the dongle into the console/PC via USB; it enumerates as an Xbox 360 controller.
+7. **BLE (PICO-D4):** The dongle advertises as **ImuToXInput**. Pair it from Windows Bluetooth settings, Steam Deck, or a Mayflash adapter. Once paired, it appears as a generic BLE gamepad.
 
 ---
 

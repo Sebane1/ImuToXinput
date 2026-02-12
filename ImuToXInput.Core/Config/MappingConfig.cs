@@ -41,9 +41,6 @@ namespace ImuToXInput.Config
         [JsonProperty("tracker")]
         public string Tracker { get; set; } = "";
 
-        /// <summary>
-        /// "EulerX", "EulerY", "EulerZ", "PosX", "PosY", "PosZ", "FloorRelX", "FloorRelY", "FloorRelZ"
-        /// </summary>
         [JsonProperty("source")]
         public string Source { get; set; } = "";
 
@@ -53,9 +50,6 @@ namespace ImuToXInput.Config
         [JsonProperty("invert")]
         public bool Invert { get; set; }
 
-        /// <summary>
-        /// "LeftThumbX", "LeftThumbY", "RightThumbX", "RightThumbY"
-        /// </summary>
         [JsonProperty("axis")]
         public string Axis { get; set; } = "";
     }
@@ -66,30 +60,18 @@ namespace ImuToXInput.Config
     [JsonConverter(typeof(ConditionConverter))]
     public abstract class MappingCondition
     {
-        /// <summary>
-        /// "euler_threshold", "euler_diff", "euler_sum", "position_threshold"
-        /// </summary>
         [JsonProperty("type")]
         public string Type { get; set; } = "";
     }
 
-    /// <summary>
-    /// Single tracker, e.g. leftFoot.Euler.X &lt; -20
-    /// </summary>
     public class EulerThresholdCondition : MappingCondition
     {
         [JsonProperty("tracker")]
         public string Tracker { get; set; } = "";
 
-        /// <summary>
-        /// "X", "Y", "Z"
-        /// </summary>
         [JsonProperty("component")]
         public string Component { get; set; } = "";
 
-        /// <summary>
-        /// "less_than", "greater_than", "less_than_or_equal", "greater_than_or_equal"
-        /// </summary>
         [JsonProperty("op")]
         public string Op { get; set; } = "greater_than";
 
@@ -97,9 +79,6 @@ namespace ImuToXInput.Config
         public float Value { get; set; }
     }
 
-    /// <summary>
-    /// Two trackers: trackerA.Component - trackerB.Component op value
-    /// </summary>
     public class EulerDiffCondition : MappingCondition
     {
         [JsonProperty("trackerA")]
@@ -118,9 +97,6 @@ namespace ImuToXInput.Config
         public float Value { get; set; }
     }
 
-    /// <summary>
-    /// Two trackers: trackerA.Component + trackerB.Component op value
-    /// </summary>
     public class EulerSumCondition : MappingCondition
     {
         [JsonProperty("trackerA")]
@@ -139,17 +115,11 @@ namespace ImuToXInput.Config
         public float Value { get; set; }
     }
 
-    /// <summary>
-    /// Position-based: e.g. rightHand.FloorRelativePosition.Y &gt; 0.1
-    /// </summary>
     public class PositionThresholdCondition : MappingCondition
     {
         [JsonProperty("tracker")]
         public string Tracker { get; set; } = "";
 
-        /// <summary>
-        /// "CalibratedX", "CalibratedY", "CalibratedZ", "FloorRelX", "FloorRelY", "FloorRelZ"
-        /// </summary>
         [JsonProperty("source")]
         public string Source { get; set; } = "";
 
@@ -165,9 +135,6 @@ namespace ImuToXInput.Config
         [JsonProperty("condition")]
         public MappingCondition Condition { get; set; } = null!;
 
-        /// <summary>
-        /// "A", "B", "X", "Y", "LeftShoulder", "RightShoulder", "Back", "Start", "Up", "Down", "Left", "Right"
-        /// </summary>
         [JsonProperty("button")]
         public string Button { get; set; } = "";
     }
@@ -177,9 +144,6 @@ namespace ImuToXInput.Config
         [JsonProperty("condition")]
         public MappingCondition Condition { get; set; } = null!;
 
-        /// <summary>
-        /// "LeftTrigger", "RightTrigger"
-        /// </summary>
         [JsonProperty("trigger")]
         public string Trigger { get; set; } = "";
 

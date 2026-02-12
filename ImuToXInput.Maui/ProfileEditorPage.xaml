@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ImuToXInput.Maui.ProfileEditorPage"
+             Title="Edit profile">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <!-- General -->
+            <Label Text="General" FontAttributes="Bold" FontSize="18" />
+            <Label Text="Profile name" />
+            <Entry x:Name="TxtName" Placeholder="Profile name" />
+            <Label Text="Process names (game .exe without extension)" />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <Entry x:Name="TxtProcessName" Placeholder="process1" Grid.Column="0" />
+                <Button x:Name="BtnAddProcessName" Text="Add" Grid.Column="1" Clicked="OnAddProcessNameClicked" />
+                <Button x:Name="BtnRemoveProcessName" Text="Remove" Grid.Column="2" Clicked="OnRemoveProcessNameClicked" />
+            </Grid>
+            <CollectionView x:Name="ListProcessNames" HeightRequest="80" SelectionMode="Single" />
+
+            <Label Text="Trackers (for floor-relative position)" />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <Picker x:Name="CmbFloorTracker" Title="Tracker" Grid.Column="0" />
+                <Button x:Name="BtnAddFloorTracker" Text="Add" Grid.Column="1" Clicked="OnAddFloorTrackerClicked" />
+                <Button x:Name="BtnRemoveFloorTracker" Text="Remove" Grid.Column="2" Clicked="OnRemoveFloorTrackerClicked" />
+            </Grid>
+            <CollectionView x:Name="ListFloorTrackers" HeightRequest="60" SelectionMode="Single" />
+
+            <!-- Axis mappings -->
+            <Label Text="Axis mappings" FontAttributes="Bold" FontSize="18" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <Button x:Name="BtnAddAxis" Text="Add axis" Grid.Column="0" Clicked="OnAddAxisClicked" />
+                <Button x:Name="BtnRemoveAxis" Text="Remove selected" Grid.Column="1" Clicked="OnRemoveAxisClicked" />
+            </Grid>
+            <VerticalStackLayout x:Name="AxisList" Spacing="6" />
+
+            <!-- Button mappings -->
+            <Label Text="Button mappings" FontAttributes="Bold" FontSize="18" />
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                <Picker x:Name="CmbButton" Title="Button" Grid.Column="0" />
+                <Button x:Name="BtnAddButton" Text="Add" Grid.Column="1" Clicked="OnAddButtonClicked" />
+                <Button x:Name="BtnEditButton" Text="Edit" Grid.Column="2" Clicked="OnEditButtonClicked" />
+                <Button x:Name="BtnRemoveButton" Text="Remove" Grid.Column="3" Clicked="OnRemoveButtonClicked" />
+            </Grid>
+            <CollectionView x:Name="ListButtons" HeightRequest="120" SelectionMode="Single" />
+
+            <!-- Trigger mappings -->
+            <Label Text="Trigger mappings" FontAttributes="Bold" FontSize="18" />
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                <Picker x:Name="CmbTrigger" Title="Trigger" Grid.Column="0" />
+                <Button x:Name="BtnAddTrigger" Text="Add" Grid.Column="1" Clicked="OnAddTriggerClicked" />
+                <Button x:Name="BtnEditTrigger" Text="Edit" Grid.Column="2" Clicked="OnEditTriggerClicked" />
+                <Button x:Name="BtnRemoveTrigger" Text="Remove" Grid.Column="3" Clicked="OnRemoveTriggerClicked" />
+            </Grid>
+            <CollectionView x:Name="ListTriggers" HeightRequest="100" SelectionMode="Single" />
+
+            <!-- Script: single WebView with textarea (no CDN = always visible and clickable) -->
+            <Label Text="Script (axis/button/trigger)" FontAttributes="Bold" FontSize="18" />
+            <VerticalStackLayout Spacing="8">
+                <Border Stroke="#808080" StrokeThickness="1" Background="#FFF8F0" Padding="0">
+                    <WebView x:Name="ScriptWebView" HeightRequest="280" MinimumHeightRequest="200" />
+                </Border>
+                <HorizontalStackLayout Spacing="12">
+                    <Button x:Name="BtnRefreshFromForm" Text="Refresh from form" Clicked="OnRefreshFromFormClicked" />
+                    <Button x:Name="BtnApplyScript" Text="Apply script" Clicked="OnApplyScriptClicked" />
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+
+            <Button x:Name="BtnSave" Text="Save" Clicked="OnSaveClicked" Margin="0,20,0,0" />
+            <Button x:Name="BtnCancel" Text="Cancel" Clicked="OnCancelClicked" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

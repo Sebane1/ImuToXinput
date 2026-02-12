@@ -1,3 +1,6 @@
 [submodule "SlimeImuProtocol"]
 	path = SlimeImuProtocol
 	url = https://github.com/Sebane1/SlimeImuProtocol.git
+[submodule "SolarXR-Protocol"]
+	path = SolarXR-Protocol
+	url = https://github.com/Sebane1/SolarXR-Protocol.git

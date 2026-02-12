@@ -1,5 +1,7 @@
 using AutoUpdaterDotNET;
 using ImuToXInput.Config;
+using ImuToXInput.Core.Output;
+using ImuToXInput.Platform;
 using Nefarius.ViGEm.Client;
 using Nefarius.ViGEm.Client.Targets;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
@@ -16,6 +18,7 @@ namespace ImuToXInput
         private static ViGEmClient client;
         private static SlimeVRClient slimeVRClient;
         private static IXbox360Controller xbox;
+        private static IGamepadOutput _gamepadOutput = null!;
         private static ConcurrentDictionary<string, bool> _priorHapticsStates = new ConcurrentDictionary<string, bool>();
         private static ConcurrentDictionary<string, UdpClient> _hapticClients = new ConcurrentDictionary<string, UdpClient>();
         // Body-part → TrackerState
@@ -49,6 +52,7 @@ namespace ImuToXInput
                 slimeVRClient.Start();
                 xbox = client.CreateXbox360Controller();
                 xbox.Connect();
+                _gamepadOutput = new ViGEmGamepadOutput(xbox);
                 xbox.FeedbackReceived += (s, e) =>
                 {
                     var intensityLeft = e.LargeMotor / 255f;
@@ -117,7 +121,7 @@ namespace ImuToXInput
                 var profile = ConfigLoader.GetProfileForProcess(_loadedConfig, runningGame);
                 if (profile != null)
                 {
-                    ConfigApplier.Apply(profile, trackers, xbox);
+                    ConfigApplier.Apply(profile, trackers, _gamepadOutput);
                     return;
                 }
             }
@@ -145,57 +149,46 @@ namespace ImuToXInput
         {
             if (trackers.TryGetValue("HEAD", out var head))
             {
-                xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(-head.Euler.X * 2));
-                xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(-head.Euler.Y * 1f));
+                _gamepadOutput.SetAxis(GamepadAxis.RightThumbY, ApplyDeadzone(-head.Euler.X * 2));
+                _gamepadOutput.SetAxis(GamepadAxis.RightThumbX, ApplyDeadzone(-head.Euler.Y * 1f));
             }
             if (trackers.TryGetValue("CHEST", out var chest))
             {
             }
             if (trackers.TryGetValue("HIP", out var hips))
             {
-                xbox.SetAxisValue(Xbox360Axis.LeftThumbX, ApplyDeadzone(hips.Euler.Z * 2));
-                xbox.SetAxisValue(Xbox360Axis.LeftThumbY, ApplyDeadzone(-hips.Euler.X * 2));
+                _gamepadOutput.SetAxis(GamepadAxis.LeftThumbX, ApplyDeadzone(hips.Euler.Z * 2));
+                _gamepadOutput.SetAxis(GamepadAxis.LeftThumbY, ApplyDeadzone(-hips.Euler.X * 2));
             }
             if (trackers.TryGetValue("RIGHT_UPPER_ARM", out var rightHand))
             {
-                xbox.SetButtonState(Xbox360Button.B, rightHand.Euler.Y - chest.Euler.Y > 30f);
-
-                xbox.SetSliderValue(Xbox360Slider.RightTrigger, (byte)(rightHand.Euler.Y + chest.Euler.Y < -15f ? 255 : 0));
+                _gamepadOutput.SetButton(GamepadButton.B, rightHand.Euler.Y - chest.Euler.Y > 30f);
+                _gamepadOutput.SetTrigger(GamepadTrigger.RightTrigger, (byte)(rightHand.Euler.Y + chest.Euler.Y < -15f ? 255 : 0));
             }
             if (trackers.TryGetValue("LEFT_UPPER_ARM", out var leftHand))
             {
                 bool triggerValue = leftHand.Euler.Y + chest.Euler.Y > 10f;
-                xbox.SetSliderValue(Xbox360Slider.LeftTrigger, (byte)(triggerValue ? 255 : 0));
+                _gamepadOutput.SetTrigger(GamepadTrigger.LeftTrigger, (byte)(triggerValue ? 255 : 0));
             }
 
             if (trackers.TryGetValue("LEFT_FOOT", out var leftFoot))
             {
-                xbox.SetButtonState(Xbox360Button.A, leftFoot.Euler.X < -20);
-
-                //xbox.SetButtonState(Xbox360Button.Y, leftFoot.Euler.Z > -20);
-
-                xbox.SetButtonState(Xbox360Button.LeftShoulder, leftFoot.Euler.Y > 5);
+                _gamepadOutput.SetButton(GamepadButton.A, leftFoot.Euler.X < -20);
+                _gamepadOutput.SetButton(GamepadButton.LeftShoulder, leftFoot.Euler.Y > 5);
             }
 
             if (trackers.TryGetValue("RIGHT_FOOT", out var rightFoot))
             {
-                xbox.SetButtonState(Xbox360Button.A, rightFoot.Euler.X < -20);
-
-                //xbox.SetButtonState(Xbox360Button.X, rightFoot.Euler.Z > 20);
-
-                xbox.SetButtonState(Xbox360Button.RightShoulder, rightFoot.Euler.Y < -5);
+                _gamepadOutput.SetButton(GamepadButton.A, rightFoot.Euler.X < -20);
+                _gamepadOutput.SetButton(GamepadButton.RightShoulder, rightFoot.Euler.Y < -5);
             }
 
             if (trackers.TryGetValue("LEFT_LOWER_LEG", out var leftAnkle))
             {
-                //   xbox.SetButtonState(Xbox360Button.Back, leftAnkle.Euler.X < 1);
             }
 
             if (trackers.TryGetValue("RIGHT_LOWER_LEG", out var rightAnkle))
             {
-                //var value = rightAnkle.Euler.X > 1;
-                //Console.WriteLine(value);
-                //xbox.SetButtonState(Xbox360Button.Start, value);
             }
         }
 
@@ -274,15 +267,15 @@ namespace ImuToXInput
                 bool downRightState = rightDir.downRight;
 
                 // Send to virtual controller
-                xbox.SetButtonState(Xbox360Button.Up, upState);
-                xbox.SetButtonState(Xbox360Button.Down, downState);
-                xbox.SetButtonState(Xbox360Button.Left, leftState);
-                xbox.SetButtonState(Xbox360Button.Right, rightState);
+                _gamepadOutput.SetButton(GamepadButton.Up, upState);
+                _gamepadOutput.SetButton(GamepadButton.Down, downState);
+                _gamepadOutput.SetButton(GamepadButton.Left, leftState);
+                _gamepadOutput.SetButton(GamepadButton.Right, rightState);
 
-                xbox.SetButtonState(Xbox360Button.A, upRightState);
-                xbox.SetButtonState(Xbox360Button.B, upLeftState);
-                xbox.SetButtonState(Xbox360Button.X, downRightState);
-                xbox.SetButtonState(Xbox360Button.Y, downLeftState);
+                _gamepadOutput.SetButton(GamepadButton.A, upRightState);
+                _gamepadOutput.SetButton(GamepadButton.B, upLeftState);
+                _gamepadOutput.SetButton(GamepadButton.X, downRightState);
+                _gamepadOutput.SetButton(GamepadButton.Y, downLeftState);
 
                 // Debug
                 Console.SetCursorPosition(0, 0);
@@ -370,149 +363,102 @@ namespace ImuToXInput
         {
             if (trackers.TryGetValue("HEAD", out var head))
             {
-                xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(-head.Euler.X * 2));
-                xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(-head.Euler.Y * 1f));
+                _gamepadOutput.SetAxis(GamepadAxis.RightThumbY, ApplyDeadzone(-head.Euler.X * 2));
+                _gamepadOutput.SetAxis(GamepadAxis.RightThumbX, ApplyDeadzone(-head.Euler.Y * 1f));
             }
             if (trackers.TryGetValue("CHEST", out var chest))
             {
             }
             if (trackers.TryGetValue("HIP", out var hips))
             {
-                xbox.SetAxisValue(Xbox360Axis.LeftThumbX, ApplyDeadzone(hips.Euler.Y * 2));
-                xbox.SetAxisValue(Xbox360Axis.LeftThumbY, ApplyDeadzone(-hips.Euler.X * 2));
+                _gamepadOutput.SetAxis(GamepadAxis.LeftThumbX, ApplyDeadzone(hips.Euler.Y * 2));
+                _gamepadOutput.SetAxis(GamepadAxis.LeftThumbY, ApplyDeadzone(-hips.Euler.X * 2));
             }
             if (trackers.TryGetValue("RIGHT_UPPER_ARM", out var rightHand))
             {
-                xbox.SetButtonState(Xbox360Button.Y, rightHand.Euler.Z + chest.Euler.Z < -30f);
-
-                xbox.SetSliderValue(Xbox360Slider.RightTrigger, (byte)(rightHand.Euler.Z - chest.Euler.Z > 30f ? 255 : 0));
+                _gamepadOutput.SetButton(GamepadButton.Y, rightHand.Euler.Z + chest.Euler.Z < -30f);
+                _gamepadOutput.SetTrigger(GamepadTrigger.RightTrigger, (byte)(rightHand.Euler.Z - chest.Euler.Z > 30f ? 255 : 0));
             }
             if (trackers.TryGetValue("LEFT_UPPER_ARM", out var leftHand))
             {
-                xbox.SetSliderValue(Xbox360Slider.LeftTrigger, (byte)(leftHand.Euler.Z - chest.Euler.Z < -30f ? 255 : 0));
+                _gamepadOutput.SetTrigger(GamepadTrigger.LeftTrigger, (byte)(leftHand.Euler.Z - chest.Euler.Z < -30f ? 255 : 0));
             }
 
             if (trackers.TryGetValue("LEFT_FOOT", out var leftFoot))
             {
-                xbox.SetButtonState(Xbox360Button.LeftShoulder, leftFoot.Euler.X < -20);
-
-                //xbox.SetButtonState(Xbox360Button.Y, leftFoot.Euler.Y > -20);
-
-                //xbox.SetButtonState(Xbox360Button.LeftShoulder, leftFoot.Euler.Z > 5);
+                _gamepadOutput.SetButton(GamepadButton.LeftShoulder, leftFoot.Euler.X < -20);
             }
             if (trackers.TryGetValue("RIGHT_FOOT", out var rightFoot))
             {
-                xbox.SetButtonState(Xbox360Button.RightShoulder, rightFoot.Euler.X < -20);
-
-                //xbox.SetButtonState(Xbox360Button.X, rightFoot.Euler.Y > 20);
-
-                //xbox.SetButtonState(Xbox360Button.RightShoulder, rightFoot.Euler.Z < -5);
+                _gamepadOutput.SetButton(GamepadButton.RightShoulder, rightFoot.Euler.X < -20);
             }
 
-            if (trackers.TryGetValue("LEFT_LOWER_LEG", out var leftAnkle))
-            {
-                //   xbox.SetButtonState(Xbox360Button.Back, leftAnkle.Euler.X < 1);
-            }
-
-            if (trackers.TryGetValue("RIGHT_LOWER_LEG", out var rightAnkle))
-            {
-                //var value = rightAnkle.Euler.X > 1;
-                //Console.WriteLine(value);
-                //xbox.SetButtonState(Xbox360Button.Start, value);
-            }
+            if (trackers.TryGetValue("LEFT_LOWER_LEG", out var leftAnkle)) { }
+            if (trackers.TryGetValue("RIGHT_LOWER_LEG", out var rightAnkle)) { }
         }
 
         private static void FPS()
         {
             if (trackers.TryGetValue("HEAD", out var head))
             {
-                xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(-head.Euler.X * 2));
-                xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(-head.Euler.Y * 1f));
+                _gamepadOutput.SetAxis(GamepadAxis.RightThumbY, ApplyDeadzone(-head.Euler.X * 2));
+                _gamepadOutput.SetAxis(GamepadAxis.RightThumbX, ApplyDeadzone(-head.Euler.Y * 1f));
             }
             if (trackers.TryGetValue("CHEST", out var chest))
             {
             }
             if (trackers.TryGetValue("HIP", out var hips))
             {
-                xbox.SetAxisValue(Xbox360Axis.LeftThumbX, ApplyDeadzone(hips.Euler.Z * 2));
-                xbox.SetAxisValue(Xbox360Axis.LeftThumbY, ApplyDeadzone(-hips.Euler.X * 2));
+                _gamepadOutput.SetAxis(GamepadAxis.LeftThumbX, ApplyDeadzone(hips.Euler.Z * 2));
+                _gamepadOutput.SetAxis(GamepadAxis.LeftThumbY, ApplyDeadzone(-hips.Euler.X * 2));
             }
             if (trackers.TryGetValue("RIGHT_UPPER_ARM", out var rightHand))
             {
-                xbox.SetButtonState(Xbox360Button.B, rightHand.Euler.Y - chest.Euler.Y > 30f);
-
-                xbox.SetSliderValue(Xbox360Slider.RightTrigger, (byte)(rightHand.Euler.Y + chest.Euler.Y < -15f ? 255 : 0));
+                _gamepadOutput.SetButton(GamepadButton.B, rightHand.Euler.Y - chest.Euler.Y > 30f);
+                _gamepadOutput.SetTrigger(GamepadTrigger.RightTrigger, (byte)(rightHand.Euler.Y + chest.Euler.Y < -15f ? 255 : 0));
             }
             if (trackers.TryGetValue("LEFT_UPPER_ARM", out var leftHand))
             {
-                xbox.SetSliderValue(Xbox360Slider.LeftTrigger, (byte)(leftHand.Euler.Y - chest.Euler.Y < -20f ? 255 : 0));
+                _gamepadOutput.SetTrigger(GamepadTrigger.LeftTrigger, (byte)(leftHand.Euler.Y - chest.Euler.Y < -20f ? 255 : 0));
             }
 
             if (trackers.TryGetValue("LEFT_FOOT", out var leftFoot))
             {
-                xbox.SetButtonState(Xbox360Button.A, leftFoot.Euler.X < -20);
-
-                xbox.SetButtonState(Xbox360Button.Y, leftFoot.Euler.Z > -20);
-
-                xbox.SetButtonState(Xbox360Button.LeftShoulder, leftFoot.Euler.Y > 5);
+                _gamepadOutput.SetButton(GamepadButton.A, leftFoot.Euler.X < -20);
+                _gamepadOutput.SetButton(GamepadButton.Y, leftFoot.Euler.Z > -20);
+                _gamepadOutput.SetButton(GamepadButton.LeftShoulder, leftFoot.Euler.Y > 5);
             }
             if (trackers.TryGetValue("RIGHT_FOOT", out var rightFoot))
             {
-                xbox.SetButtonState(Xbox360Button.A, rightFoot.Euler.X < -20);
-
-                xbox.SetButtonState(Xbox360Button.X, rightFoot.Euler.Z > 20);
-
-                xbox.SetButtonState(Xbox360Button.RightShoulder, rightFoot.Euler.Y < -5);
+                _gamepadOutput.SetButton(GamepadButton.A, rightFoot.Euler.X < -20);
+                _gamepadOutput.SetButton(GamepadButton.X, rightFoot.Euler.Z > 20);
+                _gamepadOutput.SetButton(GamepadButton.RightShoulder, rightFoot.Euler.Y < -5);
             }
 
-            if (trackers.TryGetValue("LEFT_LOWER_LEG", out var leftAnkle))
-            {
-                //   xbox.SetButtonState(Xbox360Button.Back, leftAnkle.Euler.X < 1);
-            }
-
-            if (trackers.TryGetValue("RIGHT_LOWER_LEG", out var rightAnkle))
-            {
-                //var value = rightAnkle.Euler.X > 1;
-                //Console.WriteLine(value);
-                //xbox.SetButtonState(Xbox360Button.Start, value);
-            }
+            if (trackers.TryGetValue("LEFT_LOWER_LEG", out var leftAnkle)) { }
+            if (trackers.TryGetValue("RIGHT_LOWER_LEG", out var rightAnkle)) { }
         }
 
         private static void FFXIV()
         {
-
-            if (trackers.TryGetValue("HEAD", out var head))
-            {
-                //xbox.SetAxisValue(Xbox360Axis.RightThumbY, ApplyDeadzone(head.Euler.X * 2));
-                //xbox.SetAxisValue(Xbox360Axis.RightThumbX, ApplyDeadzone(-head.Euler.Z * 3f));
-            }
-            if (trackers.TryGetValue("CHEST", out var chest))
-            {
-            }
+            if (trackers.TryGetValue("HEAD", out var head)) { }
+            if (trackers.TryGetValue("CHEST", out var chest)) { }
             if (trackers.TryGetValue("HIP", out var hips))
             {
-                xbox.SetAxisValue(Xbox360Axis.LeftThumbX, ApplyDeadzone(hips.Euler.Z * 1));
-                xbox.SetAxisValue(Xbox360Axis.LeftThumbY, ApplyDeadzone(-hips.Euler.X * 1));
+                _gamepadOutput.SetAxis(GamepadAxis.LeftThumbX, ApplyDeadzone(hips.Euler.Z * 1));
+                _gamepadOutput.SetAxis(GamepadAxis.LeftThumbY, ApplyDeadzone(-hips.Euler.X * 1));
             }
 
-            TrackerState leftFoot = null;
+            TrackerState? leftFoot = null;
             if (trackers.TryGetValue("LEFT_FOOT", out leftFoot))
             {
-                //xbox.SetButtonState(Xbox360Button.Y, leftFoot.Euler.X < -20);
-
-                //xbox.SetButtonState(Xbox360Button.Y, leftFoot.Euler.Z > -20);
-
-                xbox.SetSliderValue(Xbox360Slider.LeftTrigger, (byte)(leftFoot.Euler.Y > 15f ? 255 : 0));
+                _gamepadOutput.SetTrigger(GamepadTrigger.LeftTrigger, (byte)(leftFoot.Euler.Y > 15f ? 255 : 0));
             }
 
-            TrackerState rightFoot = null;
+            TrackerState? rightFoot = null;
             if (trackers.TryGetValue("RIGHT_FOOT", out rightFoot))
             {
-                //xbox.SetButtonState(Xbox360Button.Y, rightFoot.Euler.X < -20);
-
-                //xbox.SetButtonState(Xbox360Button.X, rightFoot.Euler.Z > 20);
-
-                xbox.SetSliderValue(Xbox360Slider.RightTrigger, (byte)(rightFoot.Euler.Y < -15f ? 255 : 0));
+                _gamepadOutput.SetTrigger(GamepadTrigger.RightTrigger, (byte)(rightFoot.Euler.Y < -15f ? 255 : 0));
             }
 
             if (leftFoot != null && rightFoot != null)
@@ -521,35 +467,24 @@ namespace ImuToXInput
             }
             if (trackers.TryGetValue("RIGHT_LOWER_ARM", out var rightHand))
             {
-
-                xbox.SetButtonState(Xbox360Button.Y, rightHand.FloorRelativePosition.Y > 0.1f);
-                xbox.SetButtonState(Xbox360Button.A, rightHand.FloorRelativePosition.Y < -0.02f);
-                xbox.SetButtonState(Xbox360Button.B, rightHand.FloorRelativePosition.Z > 0.1f);
-                xbox.SetButtonState(Xbox360Button.X, rightHand.FloorRelativePosition.Z < -0.1f);
-
+                _gamepadOutput.SetButton(GamepadButton.Y, rightHand.FloorRelativePosition.Y > 0.1f);
+                _gamepadOutput.SetButton(GamepadButton.A, rightHand.FloorRelativePosition.Y < -0.02f);
+                _gamepadOutput.SetButton(GamepadButton.B, rightHand.FloorRelativePosition.Z > 0.1f);
+                _gamepadOutput.SetButton(GamepadButton.X, rightHand.FloorRelativePosition.Z < -0.1f);
                 Console.SetCursorPosition(0, 0);
                 Console.WriteLine(rightHand.FloorRelativePosition);
             }
             if (trackers.TryGetValue("LEFT_UPPER_ARM", out var leftHand))
             {
-                xbox.SetButtonState(Xbox360Button.Up, leftHand.FloorRelativePosition.Y > 0.01f);
-                xbox.SetButtonState(Xbox360Button.Down, leftHand.FloorRelativePosition.Y < -0.02f);
-                xbox.SetButtonState(Xbox360Button.Left, leftHand.FloorRelativePosition.Z > 0.01f);
-                xbox.SetButtonState(Xbox360Button.Right, leftHand.FloorRelativePosition.Z < -0.01f);
+                _gamepadOutput.SetButton(GamepadButton.Up, leftHand.FloorRelativePosition.Y > 0.01f);
+                _gamepadOutput.SetButton(GamepadButton.Down, leftHand.FloorRelativePosition.Y < -0.02f);
+                _gamepadOutput.SetButton(GamepadButton.Left, leftHand.FloorRelativePosition.Z > 0.01f);
+                _gamepadOutput.SetButton(GamepadButton.Right, leftHand.FloorRelativePosition.Z < -0.01f);
                 Console.WriteLine(leftHand.FloorRelativePosition);
             }
 
-            if (trackers.TryGetValue("LEFT_LOWER_LEG", out var leftAnkle))
-            {
-                //   xbox.SetButtonState(Xbox360Button.Back, leftAnkle.Euler.X < 1);
-            }
-
-            if (trackers.TryGetValue("RIGHT_LOWER_LEG", out var rightAnkle))
-            {
-                //var value = rightAnkle.Euler.X > 1;
-                //Console.WriteLine(value);
-                //xbox.SetButtonState(Xbox360Button.Start, value);
-            }
+            if (trackers.TryGetValue("LEFT_LOWER_LEG", out var leftAnkle)) { }
+            if (trackers.TryGetValue("RIGHT_LOWER_LEG", out var rightAnkle)) { }
         }
 
         static short ApplyDeadzone(float value, float deadzone = 0.2f)

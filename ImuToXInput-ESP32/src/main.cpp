@@ -19,6 +19,8 @@
 #include "TrackerState.h"
 #include "MappingEngine.h"
 #include "Xbox360Report.h"
+#include "OutputBleGamepad.h"
+#include "SolarXRClient.h"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -128,23 +130,24 @@ void setupProvisioningServer() {
 }
 
 // ---------------------------------------------------------------------------
-// SolarXR / SlimeVR client (stub)
+// SolarXR / SlimeVR client
 // Protocol: https://github.com/SlimeVR/SolarXR-Protocol
 // ---------------------------------------------------------------------------
 
+static bool solarxrConnectAttempted = false;
+
 void solarxrConnect() {
-  if (solarxrServerIP.length() == 0) {
-    Serial.println("No SolarXR server IP configured; skipping.");
-    return;
-  }
-  Serial.println("SolarXR server: " + solarxrServerIP + ":" + String(SOLARXR_PORT));
-  // TODO: WebSocket client connect to solarxrServerIP:21110
-  // TODO: Subscribe to data feed (FlatBuffers); parse tracker positions/rotations
-  // TODO: Update tracker map via trackerMapSet(bodyPart, &state)
+  if (solarxrServerIP.length() == 0) return;
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (solarxrConnectAttempted) return;
+  solarxrConnectAttempted = true;
+  solarxrClientConnect(solarxrServerIP.c_str(), SOLARXR_PORT);
 }
 
 void solarxrPoll() {
-  // TODO: read WebSocket frames; parse MessageBundle / tracker updates
+  if (wifiConfigured && WiFi.status() == WL_CONNECTED && !solarxrConnectAttempted)
+    solarxrConnect();
+  solarxrClientPoll();
 }
 
 // ---------------------------------------------------------------------------
@@ -173,9 +176,12 @@ void applyMappingsToReport() {
 }
 
 void hidSendReport() {
-  // TODO: send report via USB HID (Xbox 360 descriptor)
-  // For now report is filled and ready for when HID is implemented
+#ifdef USE_BLE_GAMEPAD
+  outputBleGamepadSend(&report);
+#else
+  // TODO: send report via USB HID (Xbox 360 descriptor) for S2/S3
   (void)report;
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +223,11 @@ void setup() {
 
   loadActiveConfig();
   solarxrConnect();
+
+#ifdef USE_BLE_GAMEPAD
+  outputBleGamepadInit();
+  Serial.println("BLE gamepad advertising as 'ImuToXInput'. Pair from your device.");
+#endif
 }
 
 void loop() {

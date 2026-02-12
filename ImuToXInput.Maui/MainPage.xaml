@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ImuToXInput.Maui.MainPage"
+             Title="ImuToXInput - Game profiles">
+    <VerticalStackLayout Padding="20" Spacing="10">
+        <Label Text="Config folder:" FontAttributes="Bold" />
+        <Label x:Name="LblFolder" Text="(not set)" LineBreakMode="TailTruncation" />
+        <Button x:Name="BtnBrowse" Text="Browse config folder" Clicked="OnBrowseClicked" />
+        <Label Text="Profiles:" FontAttributes="Bold" />
+        <ListView x:Name="ListConfigs" ItemSelected="OnProfileSelected">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <TextCell Text="{Binding}" />
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+            <Button x:Name="BtnNew" Text="New profile" Clicked="OnNewClicked" Grid.Column="0" />
+            <Button x:Name="BtnEdit" Text="Edit selected" Clicked="OnEditClicked" Grid.Column="1" />
+        </Grid>
+    </VerticalStackLayout>
+</ContentPage>

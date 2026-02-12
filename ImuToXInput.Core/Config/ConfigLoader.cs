@@ -3,9 +3,6 @@ using System.Linq;
 
 namespace ImuToXInput.Config
 {
-    /// <summary>
-    /// Result of loading the configs folder: one profile per game file plus the default profile.
-    /// </summary>
     public class LoadedConfig
     {
         public List<GameProfile> Profiles { get; set; } = new();
@@ -14,14 +11,7 @@ namespace ImuToXInput.Config
 
     public static class ConfigLoader
     {
-        /// <summary>
-        /// Folder name next to the executable. Each .json file = one game profile.
-        /// </summary>
         public const string ConfigFolderName = "configs";
-
-        /// <summary>
-        /// Filename for the profile used when no game process matches (e.g. generic FPS).
-        /// </summary>
         public const string DefaultConfigFileName = "default.json";
 
         public static string GetConfigDirectory()
@@ -29,9 +19,6 @@ namespace ImuToXInput.Config
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFolderName);
         }
 
-        /// <summary>
-        /// Load all .json files from the configs folder. default.json is used as the fallback profile.
-        /// </summary>
         public static LoadedConfig? Load()
         {
             var dir = GetConfigDirectory();
@@ -68,9 +55,6 @@ namespace ImuToXInput.Config
             return result.Profiles.Count > 0 || result.DefaultProfile != null ? result : null;
         }
 
-        /// <summary>
-        /// Find the profile for the given process name. Uses processNames in each profile; falls back to DefaultProfile.
-        /// </summary>
         public static GameProfile? GetProfileForProcess(LoadedConfig? config, string? processName)
         {
             if (config == null)

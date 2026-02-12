@@ -1,13 +1,11 @@
-using Nefarius.ViGEm.Client.Targets;
-using Nefarius.ViGEm.Client.Targets.Xbox360;
 using System.Linq;
-using System.Numerics;
 using ImuToXInput;
+using ImuToXInput.Core.Output;
 
 namespace ImuToXInput.Config
 {
     /// <summary>
-    /// Applies a JSON game profile to the virtual Xbox controller from current tracker state.
+    /// Applies a JSON game profile to an abstract gamepad output (ViGEm on Windows, BLE on Android).
     /// </summary>
     public static class ConfigApplier
     {
@@ -16,12 +14,11 @@ namespace ImuToXInput.Config
         public static void Apply(
             GameProfile profile,
             Dictionary<string, TrackerState> trackers,
-            IXbox360Controller xbox,
+            IGamepadOutput output,
             float axisDeadzone = DefaultDeadzone)
         {
             if (profile.Trackers != null && profile.Trackers.Count > 0)
             {
-                // Only LEFT_FOOT and RIGHT_FOOT are valid for floor height; ignore any other joints.
                 var floorTrackerIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "LEFT_FOOT", "RIGHT_FOOT" };
                 var floorTrackers = profile.Trackers
                     .Where(id => floorTrackerIds.Contains(id))
@@ -38,14 +35,14 @@ namespace ImuToXInput.Config
                 if (!trackers.TryGetValue(m.Tracker, out var t)) continue;
                 float raw = GetAxisSourceValue(t, m.Source) * m.Scale * (m.Invert ? -1f : 1f);
                 if (!TryParseAxis(m.Axis, out var axis)) continue;
-                xbox.SetAxisValue(axis, ApplyDeadzone(raw, axisDeadzone));
+                output.SetAxis(axis, ApplyDeadzone(raw, axisDeadzone));
             }
 
             foreach (var m in profile.ButtonMappings)
             {
                 bool value = EvaluateCondition(m.Condition, trackers);
                 if (TryParseButton(m.Button, out var button))
-                    xbox.SetButtonState(button, value);
+                    output.SetButton(button, value);
             }
 
             foreach (var m in profile.TriggerMappings)
@@ -53,7 +50,7 @@ namespace ImuToXInput.Config
                 bool cond = EvaluateCondition(m.Condition, trackers);
                 byte value = cond ? m.ValueWhenTrue : m.ValueWhenFalse;
                 if (TryParseTrigger(m.Trigger, out var trigger))
-                    xbox.SetSliderValue(trigger, value);
+                    output.SetTrigger(trigger, value);
             }
         }
 
@@ -151,45 +148,45 @@ namespace ImuToXInput.Config
             }
         }
 
-        private static bool TryParseAxis(string name, out Xbox360Axis axis)
+        private static bool TryParseAxis(string name, out GamepadAxis axis)
         {
-            axis = Xbox360Axis.LeftThumbX;
+            axis = GamepadAxis.LeftThumbX;
             if (string.IsNullOrEmpty(name)) return false;
             var n = name.Trim();
-            if (n.Equals("LeftThumbX", StringComparison.OrdinalIgnoreCase)) { axis = Xbox360Axis.LeftThumbX; return true; }
-            if (n.Equals("LeftThumbY", StringComparison.OrdinalIgnoreCase)) { axis = Xbox360Axis.LeftThumbY; return true; }
-            if (n.Equals("RightThumbX", StringComparison.OrdinalIgnoreCase)) { axis = Xbox360Axis.RightThumbX; return true; }
-            if (n.Equals("RightThumbY", StringComparison.OrdinalIgnoreCase)) { axis = Xbox360Axis.RightThumbY; return true; }
+            if (n.Equals("LeftThumbX", StringComparison.OrdinalIgnoreCase)) { axis = GamepadAxis.LeftThumbX; return true; }
+            if (n.Equals("LeftThumbY", StringComparison.OrdinalIgnoreCase)) { axis = GamepadAxis.LeftThumbY; return true; }
+            if (n.Equals("RightThumbX", StringComparison.OrdinalIgnoreCase)) { axis = GamepadAxis.RightThumbX; return true; }
+            if (n.Equals("RightThumbY", StringComparison.OrdinalIgnoreCase)) { axis = GamepadAxis.RightThumbY; return true; }
             return false;
         }
 
-        private static bool TryParseButton(string name, out Xbox360Button button)
+        private static bool TryParseButton(string name, out GamepadButton button)
         {
-            button = Xbox360Button.A;
+            button = GamepadButton.A;
             if (string.IsNullOrEmpty(name)) return false;
             var n = name.Trim();
-            if (n.Equals("A", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.A; return true; }
-            if (n.Equals("B", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.B; return true; }
-            if (n.Equals("X", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.X; return true; }
-            if (n.Equals("Y", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.Y; return true; }
-            if (n.Equals("LeftShoulder", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.LeftShoulder; return true; }
-            if (n.Equals("RightShoulder", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.RightShoulder; return true; }
-            if (n.Equals("Back", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.Back; return true; }
-            if (n.Equals("Start", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.Start; return true; }
-            if (n.Equals("Up", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.Up; return true; }
-            if (n.Equals("Down", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.Down; return true; }
-            if (n.Equals("Left", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.Left; return true; }
-            if (n.Equals("Right", StringComparison.OrdinalIgnoreCase)) { button = Xbox360Button.Right; return true; }
+            if (n.Equals("A", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.A; return true; }
+            if (n.Equals("B", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.B; return true; }
+            if (n.Equals("X", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.X; return true; }
+            if (n.Equals("Y", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.Y; return true; }
+            if (n.Equals("LeftShoulder", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.LeftShoulder; return true; }
+            if (n.Equals("RightShoulder", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.RightShoulder; return true; }
+            if (n.Equals("Back", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.Back; return true; }
+            if (n.Equals("Start", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.Start; return true; }
+            if (n.Equals("Up", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.Up; return true; }
+            if (n.Equals("Down", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.Down; return true; }
+            if (n.Equals("Left", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.Left; return true; }
+            if (n.Equals("Right", StringComparison.OrdinalIgnoreCase)) { button = GamepadButton.Right; return true; }
             return false;
         }
 
-        private static bool TryParseTrigger(string name, out Xbox360Slider slider)
+        private static bool TryParseTrigger(string name, out GamepadTrigger trigger)
         {
-            slider = Xbox360Slider.LeftTrigger;
+            trigger = GamepadTrigger.LeftTrigger;
             if (string.IsNullOrEmpty(name)) return false;
             var n = name.Trim();
-            if (n.Equals("LeftTrigger", StringComparison.OrdinalIgnoreCase)) { slider = Xbox360Slider.LeftTrigger; return true; }
-            if (n.Equals("RightTrigger", StringComparison.OrdinalIgnoreCase)) { slider = Xbox360Slider.RightTrigger; return true; }
+            if (n.Equals("LeftTrigger", StringComparison.OrdinalIgnoreCase)) { trigger = GamepadTrigger.LeftTrigger; return true; }
+            if (n.Equals("RightTrigger", StringComparison.OrdinalIgnoreCase)) { trigger = GamepadTrigger.RightTrigger; return true; }
             return false;
         }
     }

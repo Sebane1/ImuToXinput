@@ -3,10 +3,6 @@ using Newtonsoft.Json.Linq;
 
 namespace ImuToXInput.Config
 {
-    /// <summary>
-    /// Deserializes "condition" objects based on "type" field into the correct condition class.
-    /// Populates manually to avoid re-entering this converter (which would cause stack overflow).
-    /// </summary>
     public class ConditionConverter : JsonConverter
     {
         public override bool CanConvert(Type objectType) => objectType == typeof(MappingCondition);

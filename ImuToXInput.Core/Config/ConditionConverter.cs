@@ -74,7 +74,50 @@ namespace ImuToXInput.Config
 
         public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
-            throw new NotImplementedException("Serialization not needed for config");
+            if (value == null)
+            {
+                writer.WriteNull();
+                return;
+            }
+            var jo = value switch
+            {
+                EulerThresholdCondition e => new JObject
+                {
+                    ["type"] = e.Type,
+                    ["tracker"] = e.Tracker,
+                    ["component"] = e.Component,
+                    ["op"] = e.Op,
+                    ["value"] = e.Value
+                },
+                EulerDiffCondition e => new JObject
+                {
+                    ["type"] = e.Type,
+                    ["trackerA"] = e.TrackerA,
+                    ["trackerB"] = e.TrackerB,
+                    ["component"] = e.Component,
+                    ["op"] = e.Op,
+                    ["value"] = e.Value
+                },
+                EulerSumCondition e => new JObject
+                {
+                    ["type"] = e.Type,
+                    ["trackerA"] = e.TrackerA,
+                    ["trackerB"] = e.TrackerB,
+                    ["component"] = e.Component,
+                    ["op"] = e.Op,
+                    ["value"] = e.Value
+                },
+                PositionThresholdCondition e => new JObject
+                {
+                    ["type"] = e.Type,
+                    ["tracker"] = e.Tracker,
+                    ["source"] = e.Source,
+                    ["op"] = e.Op,
+                    ["value"] = e.Value
+                },
+                _ => throw new JsonException($"Unknown condition type: {value.GetType().Name}")
+            };
+            jo.WriteTo(writer);
         }
     }
 }

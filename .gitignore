@@ -3,3 +3,7 @@ ImuToXInput/bin
 ImuToXInput/obj
 ImuToXInput.ConfigEditor/bin
 ImuToXInput.ConfigEditor/obj
+ImuToXInput.Core/bin
+ImuToXInput.Core/obj
+ImuToXInput.Maui/bin
+ImuToXInput.Maui/obj

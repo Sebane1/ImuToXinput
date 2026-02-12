@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ImuToXInput.Config;
 
 namespace ImuToXInput.Maui;
@@ -40,10 +41,22 @@ public partial class MainPage : ContentPage
 
     private async void OnBrowseClicked(object? sender, EventArgs e)
     {
-        await DisplayAlert("Config folder", "Configs are loaded from:\n" + _configFolderDisplay + "\n\nPlace your .json profile files there and refresh the list.", "OK");
+        if (string.IsNullOrEmpty(_configFolder) || !Directory.Exists(_configFolder))
+        {
+            await DisplayAlert("Config folder", "Config folder does not exist.", "OK");
+            return;
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = _configFolder, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", "Could not open folder: " + ex.Message, "OK");
+        }
     }
 
-    private void OnProfileSelected(object? sender, SelectedItemChangedEventArgs e)
+    private void OnProfileSelected(object? sender, SelectionChangedEventArgs e)
     {
         // Selection is used for Edit
     }

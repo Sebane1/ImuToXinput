@@ -3,21 +3,34 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="ImuToXInput.Maui.MainPage"
              Title="ImuToXInput - Game profiles">
-    <VerticalStackLayout Padding="20" Spacing="10">
-        <Label Text="Config folder:" FontAttributes="Bold" />
-        <Label x:Name="LblFolder" Text="(not set)" LineBreakMode="TailTruncation" />
-        <Button x:Name="BtnBrowse" Text="Browse config folder" Clicked="OnBrowseClicked" />
-        <Label Text="Profiles:" FontAttributes="Bold" />
-        <ListView x:Name="ListConfigs" ItemSelected="OnProfileSelected">
-            <ListView.ItemTemplate>
-                <DataTemplate>
-                    <TextCell Text="{Binding}" />
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
-        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-            <Button x:Name="BtnNew" Text="New profile" Clicked="OnNewClicked" Grid.Column="0" />
-            <Button x:Name="BtnEdit" Text="Edit selected" Clicked="OnEditClicked" Grid.Column="1" />
-        </Grid>
-    </VerticalStackLayout>
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Border Stroke="#ccc" StrokeThickness="1" Padding="12">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Config folder" FontAttributes="Bold" FontSize="14" />
+                    <Label x:Name="LblFolder" Text="(not set)" LineBreakMode="TailTruncation" FontSize="12" TextColor="#555" />
+                    <Button x:Name="BtnBrowse" Text="Browse config folder" Clicked="OnBrowseClicked" />
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="Profiles" FontAttributes="Bold" FontSize="16" />
+            <Border Stroke="#ccc" StrokeThickness="1" Padding="0">
+                <CollectionView x:Name="ListConfigs" SelectionMode="Single" SelectionChanged="OnProfileSelected"
+                                MinimumHeightRequest="200" MaximumHeightRequest="400">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <Grid Padding="14,10" ColumnDefinitions="*,Auto">
+                                <Label Text="{Binding}" FontSize="15" VerticalOptions="Center"
+                                       LineBreakMode="TailTruncation" />
+                                <Label Grid.Column="1" Text="›" FontSize="18" TextColor="#888" VerticalOptions="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Border>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Button x:Name="BtnNew" Text="New profile" Clicked="OnNewClicked" Grid.Column="0" />
+                <Button x:Name="BtnEdit" Text="Edit selected" Clicked="OnEditClicked" Grid.Column="1" />
+            </Grid>
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

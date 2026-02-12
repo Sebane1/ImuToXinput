@@ -71,49 +71,62 @@ public partial class ProfileEditorPage : ContentPage
 
     private void RefreshAxisList()
     {
-        AxisList.Children.Clear();
+        AxisGrid.Children.Clear();
+        AxisGrid.RowDefinitions.Clear();
+
+        const int rowHeight = 24;
+        var headerMargin = new Thickness(8, 0, 0, 0);
+
+        // Row 0: header labels for all columns (so control row aligns the same in every column)
+        AxisGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        AxisGrid.Add(new Label { Text = "Tracker", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center, Margin = headerMargin }, 0, 0);
+        AxisGrid.Add(new Label { Text = "Source", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center, Margin = headerMargin }, 1, 0);
+        AxisGrid.Add(new Label { Text = "Scale", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center, Margin = headerMargin }, 2, 0);
+        AxisGrid.Add(new Label { Text = "Invert", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center }, 3, 0);
+        AxisGrid.Add(new Label { Text = "Axis", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center, Margin = headerMargin }, 4, 0);
+        AxisGrid.Add(new Label { Text = " ", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center }, 5, 0);
+
+        int rowIndex = 1;
         foreach (var a in _profile.AxisMappings)
-            AddAxisRow(a);
-    }
-
-    private void AddAxisRow(AxisMapping a)
-    {
-        var trackerPicker = new Picker { Title = "Tracker", ItemsSource = ConfigEditorConstants.TrackerIds, WidthRequest = 100 };
-        var sourcePicker = new Picker { Title = "Source", ItemsSource = ConfigEditorConstants.AxisSources, WidthRequest = 90 };
-        var scaleEntry = new Entry { Text = a.Scale.ToString("G"), Keyboard = Keyboard.Numeric, WidthRequest = 50 };
-        var invertSwitch = new Switch { IsToggled = a.Invert };
-        var axisPicker = new Picker { Title = "Axis", ItemsSource = ConfigEditorConstants.AxisOutputs, WidthRequest = 100 };
-        var removeBtn = new Button { Text = "✕", WidthRequest = 36 };
-
-        trackerPicker.SelectedItem = a.Tracker;
-        sourcePicker.SelectedItem = a.Source;
-        axisPicker.SelectedItem = a.Axis;
-
-        var row = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitionCollection
+            AxisGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // Dropdowns (Picker) on Windows have internal top padding; push Scale/Invert/X down to align with dropdown content
+            var controlTopMargin = new Thickness(0, 25, 0, 0);
+            var trackerPicker = new Picker { Title = "Tracker", ItemsSource = ConfigEditorConstants.TrackerIds, MinimumHeightRequest = rowHeight, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill };
+            var sourcePicker = new Picker { Title = "Source", ItemsSource = ConfigEditorConstants.AxisSources, MinimumHeightRequest = rowHeight, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill };
+            var scaleEntry = new Entry { Text = a.Scale.ToString("G"), Keyboard = Keyboard.Numeric, Placeholder = "1", MinimumHeightRequest = rowHeight, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill, Margin = controlTopMargin };
+            var invertLabel = new Label { Text = "Invert", VerticalOptions = LayoutOptions.Center };
+            var invertSwitch = new Switch { IsToggled = a.Invert, VerticalOptions = LayoutOptions.Center };
+            var invertRow = new HorizontalStackLayout { Spacing = 4, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill, Margin = controlTopMargin };
+            invertRow.Children.Add(invertLabel);
+            invertRow.Children.Add(invertSwitch);
+            var axisPicker = new Picker { Title = "Axis", ItemsSource = ConfigEditorConstants.AxisOutputs, MinimumHeightRequest = rowHeight, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill };
+            var removeBtn = new Button { Text = "✕", WidthRequest = 32, MinimumHeightRequest = 22, MaximumHeightRequest = 22, Padding = new Thickness(10, 2), VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Center };
+            var removeCell = new Grid { VerticalOptions = LayoutOptions.Fill, HorizontalOptions = LayoutOptions.Center, Margin = controlTopMargin };
+            removeCell.Children.Add(removeBtn);
+
+            trackerPicker.SelectedItem = a.Tracker;
+            sourcePicker.SelectedItem = a.Source;
+            axisPicker.SelectedItem = a.Axis;
+
+            var binding = new AxisRowBinding { TrackerPicker = trackerPicker, SourcePicker = sourcePicker, ScaleEntry = scaleEntry, InvertSwitch = invertSwitch, AxisPicker = axisPicker, Mapping = a };
+            trackerPicker.BindingContext = binding;
+
+            removeBtn.Clicked += (_, _) =>
             {
-                new() { Width = new GridLength(100) },
-                new() { Width = new GridLength(90) },
-                new() { Width = new GridLength(50) },
-                new() { Width = new GridLength(50) },
-                new() { Width = new GridLength(100) },
-                new() { Width = new GridLength(40) }
-            },
-            Padding = new Thickness(0, 4),
-            ColumnSpacing = 4
-        };
-        row.Add(trackerPicker, 0); row.Add(sourcePicker, 1); row.Add(scaleEntry, 2);
-        row.Add(invertSwitch, 3); row.Add(axisPicker, 4); row.Add(removeBtn, 5);
-        row.BindingContext = new AxisRowBinding { TrackerPicker = trackerPicker, SourcePicker = sourcePicker, ScaleEntry = scaleEntry, InvertSwitch = invertSwitch, AxisPicker = axisPicker, Mapping = a };
+                _profile.AxisMappings.Remove(a);
+                RefreshAxisList();
+            };
 
-        removeBtn.Clicked += (_, _) =>
-        {
-            _profile.AxisMappings.Remove(a);
-            AxisList.Children.Remove(row);
-        };
-
-        AxisList.Children.Add(row);
+            AxisGrid.Add(trackerPicker, 0, rowIndex);
+            AxisGrid.Add(sourcePicker, 1, rowIndex);
+            AxisGrid.Add(scaleEntry, 2, rowIndex);
+            AxisGrid.Add(invertRow, 3, rowIndex);
+            AxisGrid.Add(axisPicker, 4, rowIndex);
+            AxisGrid.Add(removeCell, 5, rowIndex);
+            rowIndex++;
+        }
     }
 
     private sealed class AxisRowBinding
@@ -133,7 +146,7 @@ public partial class ProfileEditorPage : ContentPage
         _profile.Trackers = _trackers.Count > 0 ? _trackers.ToList() : null;
 
         _profile.AxisMappings.Clear();
-        foreach (var child in AxisList.Children)
+        foreach (var child in AxisGrid.Children)
         {
             if (child is not View v || v.BindingContext is not AxisRowBinding binding) continue;
             float scale = float.TryParse(binding.ScaleEntry.Text, out var s) ? s : 1f;
@@ -218,7 +231,10 @@ public partial class ProfileEditorPage : ContentPage
             else
                 SaveFormToProfile();
 
-            var fileName = _suggestedFileName;
+            var name = _profile.Name?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(name)) name = "config";
+            var invalid = Path.GetInvalidFileNameChars();
+            var fileName = string.Concat(name.Select(c => invalid.Contains(c) ? '_' : c));
             if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
                 fileName += ".json";
             var path = Path.Combine(_configFolder, fileName);
@@ -265,16 +281,15 @@ public partial class ProfileEditorPage : ContentPage
     {
         var a = new AxisMapping { Tracker = "HEAD", Source = "EulerX", Scale = 1f, Invert = false, Axis = "RightThumbX" };
         _profile.AxisMappings.Add(a);
-        AddAxisRow(a);
+        RefreshAxisList();
     }
 
     private void OnRemoveAxisClicked(object? sender, EventArgs e)
     {
-        // Remove last row for simplicity (or track selection)
-        if (AxisList.Children.Count > 0 && AxisList.Children[^1] is View last && last.BindingContext is AxisRowBinding binding)
+        if (_profile.AxisMappings.Count > 0)
         {
-            _profile.AxisMappings.Remove(binding.Mapping);
-            AxisList.Children.RemoveAt(AxisList.Children.Count - 1);
+            _profile.AxisMappings.RemoveAt(_profile.AxisMappings.Count - 1);
+            RefreshAxisList();
         }
     }
 

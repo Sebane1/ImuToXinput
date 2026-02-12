@@ -31,7 +31,7 @@ Condition types: `euler_threshold`, `euler_diff`, `euler_sum`, `position_thresho
 
 **Config Editor:** The solution includes **ImuToXInput.ConfigEditor**, a Windows Forms app to create and edit game configs without editing JSON by hand. Run it from Visual Studio (set as startup project) or run `ImuToXInput.ConfigEditor.exe` from the editor’s build output. Use **Browse** to point to the `configs` folder next to your ImuToXInput executable, then **New** / **Edit** / **Delete** to manage profiles and their axis, button, and trigger mappings. The **Script** tab shows an optional C#-style text representation of the same rules (e.g. `axis HEAD.EulerX * 2 invert -> RightThumbY`, `button when LEFT_FOOT.Euler.X < -20 -> A`); edit there and click **Apply script** to update the form, or **Refresh from form** to generate script from the form. Script and JSON stay in sync through the editor.
 
-**StepMania / DDR pad mode** is unchanged and not driven by config; it stays a dedicated hardcoded mode when the `stepmania` process is detected.
+**StepMania / DDR pad mode** is not driven by config; it stays a dedicated hardcoded mode when the `stepmania` process is detected.
 
 **ESP32 dongle version:** See the [ImuToXInput-ESP32](ImuToXInput-ESP32/) folder for firmware that runs on ESP32-S2/S3 USB dongles: WiFi provisioning (AP + web setup), SolarXR/SlimeVR data over the network, USB HID Xbox 360–style gamepad, and the same per-game JSON config format.
 

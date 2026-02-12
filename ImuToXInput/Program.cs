@@ -104,7 +104,7 @@ namespace ImuToXInput
         {
             string? runningGame = DetectGameProcess();
 
-            // StepMania / DDR pad mode stays hardcoded (unchanged)
+            // StepMania / DDR pad mode
             if (string.Equals(runningGame, "stepmania", StringComparison.OrdinalIgnoreCase))
             {
                 StepMania();
@@ -122,23 +122,23 @@ namespace ImuToXInput
                 }
             }
 
-            // Fallback when no config or no matching profile: legacy hardcoded modes
-            switch (runningGame)
-            {
-                case "MirrorsEdge":
-                    MirrorsEdge();
-                    break;
-                case "ffxiv_dx11":
-                    FFXIV();
-                    break;
-                case "portal":
-                case "portal2":
-                    Portal();
-                    break;
-                default:
-                    FPS();
-                    break;
-            }
+            //// Fallback when no config or no matching profile: legacy hardcoded modes
+            //switch (runningGame)
+            //{
+            //    case "MirrorsEdge":
+            //        MirrorsEdge();
+            //        break;
+            //    case "ffxiv_dx11":
+            //        FFXIV();
+            //        break;
+            //    case "portal":
+            //    case "portal2":
+            //        Portal();
+            //        break;
+            //    default:
+            //        FPS();
+            //        break;
+            //}
         }
 
         private static void Portal()

@@ -141,8 +141,7 @@ public partial class GameProfileEditorForm : Form
             return false;
         }
 
-        // Keywords: only highlight command words at line start (name, axis, button, trigger, etc.)
-        // so we never color "trigger" inside "RightTrigger" or identifiers like A, B, RightThumbY
+        // Keywords: command words at line start (name, axis, button, trigger, etc.)
         var lineStartKeywords = new[] { "processNames", "trackers", "name", "axis", "button", "trigger" };
         foreach (var kw in lineStartKeywords)
         {
@@ -167,6 +166,30 @@ public partial class GameProfileEditorForm : Form
                 }
                 pos += kw.Length;
             }
+        }
+
+        // "when" appears mid-line (e.g. "button when ..."); highlight by word boundaries only
+        const string whenKw = "when";
+        int whenPos = 0;
+        while (whenPos < text.Length && (whenPos = text.IndexOf(whenKw, whenPos, StringComparison.OrdinalIgnoreCase)) >= 0)
+        {
+            bool wordStart = whenPos == 0 || !IsWordChar(text[whenPos - 1]);
+            bool wordEnd = whenPos + whenKw.Length >= text.Length || !IsWordChar(text[whenPos + whenKw.Length]);
+            if (wordStart && wordEnd && !IsInsideCommentLine(text, whenPos) && !IsInsideString(whenPos, whenKw.Length))
+            {
+                bool anyUsed = false;
+                for (int i = whenPos; i < whenPos + whenKw.Length; i++)
+                {
+                    if (used[i]) { anyUsed = true; break; }
+                }
+                if (!anyUsed)
+                {
+                    for (int i = whenPos; i < whenPos + whenKw.Length; i++)
+                        used[i] = true;
+                    spans.Add((whenPos, whenKw.Length, keywordIdx));
+                }
+            }
+            whenPos += whenKw.Length;
         }
 
         // Numbers (only in unused regions)

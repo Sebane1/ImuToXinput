@@ -33,7 +33,7 @@ Condition types: `euler_threshold`, `euler_diff`, `euler_sum`, `position_thresho
 
 **StepMania / DDR pad mode** is unchanged and not driven by config; it stays a dedicated hardcoded mode when the `stepmania` process is detected.
 
-*Future goal: a version for ESP32 that reads from the SlimeVR server over WiFi and could work with real Xbox or other consoles; the same per-game JSON format can be reused there.*
+**ESP32 dongle version:** See the [ImuToXInput-ESP32](ImuToXInput-ESP32/) folder for firmware that runs on ESP32-S2/S3 USB dongles: WiFi provisioning (AP + web setup), SolarXR/SlimeVR data over the network, USB HID Xbox 360–style gamepad, and the same per-game JSON config format.
 
 How to use:
 

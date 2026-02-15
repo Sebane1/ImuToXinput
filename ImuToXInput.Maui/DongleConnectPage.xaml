@@ -18,26 +18,12 @@
             <VerticalStackLayout Spacing="8">
                 <Label Text="Host (e.g. 192.168.4.1)" FontSize="12" TextColor="#666" />
                 <Entry x:Name="EntryJocpHost" Placeholder="192.168.4.1" Keyboard="Numeric" Text="192.168.4.1"
-                       HeightRequest="48">
-                    <Entry.Padding>
-                        <OnPlatform x:TypeArguments="Thickness">
-                            <On Platform="Android" Value="12,14" />
-                            <On Platform="Default" Value="8,8" />
-                        </OnPlatform>
-                    </Entry.Padding>
-                </Entry>
+                       HeightRequest="48" />
             </VerticalStackLayout>
             <VerticalStackLayout Spacing="8">
                 <Label Text="Port" FontSize="12" TextColor="#666" />
                 <Entry x:Name="EntryJocpPort" Placeholder="30100" Keyboard="Numeric" Text="30100"
-                       HeightRequest="48">
-                    <Entry.Padding>
-                        <OnPlatform x:TypeArguments="Thickness">
-                            <On Platform="Android" Value="12,14" />
-                            <On Platform="Default" Value="8,8" />
-                        </OnPlatform>
-                    </Entry.Padding>
-                </Entry>
+                       HeightRequest="48" />
             </VerticalStackLayout>
             <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                 <Button x:Name="BtnJocpConnect" Text="Connect" Clicked="OnJocpConnectClicked" />

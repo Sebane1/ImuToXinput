@@ -27,6 +27,9 @@ public partial class App : Application
     protected override Window CreateWindow(IActivationState activationState)
     {
         // Use Shell: its Android implementation may attach content where bare ContentPage does not.
-        return new Window(new AppShell());
+        var window = new Window(new AppShell());
+        // Start controller mapping loop (SlimeVR → profile → BLE/ViGEm)
+        Services.ControllerLoopService.Start();
+        return window;
     }
 }

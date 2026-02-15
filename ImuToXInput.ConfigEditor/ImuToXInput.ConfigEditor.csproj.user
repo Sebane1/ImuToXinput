@@ -11,5 +11,14 @@
     <Compile Update="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="TriggerAxisDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="TriggerConditionValuesDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="TriggerFixedValueDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

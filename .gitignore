@@ -7,3 +7,5 @@ ImuToXInput.Core/bin
 ImuToXInput.Core/obj
 ImuToXInput.Maui/bin
 ImuToXInput.Maui/obj
+ImuToXInput.ConfigServer/obj
+ImuToXInput.ConfigServer/bin

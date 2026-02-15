@@ -175,9 +175,17 @@ public partial class ProfileEditorPage : ContentPage
 
     private void RefreshTriggerList()
     {
-        ListTriggers.ItemsSource = _triggerMappings
-            .Select(m => Summarize(m.Condition) + " → " + m.Trigger)
-            .ToList();
+        ListTriggers.ItemsSource = _triggerMappings.Select(SummarizeTrigger).ToList();
+    }
+
+    private static string SummarizeTrigger(TriggerMapping m)
+    {
+        if (m.FixedValue.HasValue) return "= " + m.FixedValue.Value + " → " + m.Trigger;
+        if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source)) return m.Tracker + "." + m.Source + " → " + m.Trigger;
+        var s = Summarize(m.Condition) + " → " + m.Trigger;
+        if (m.ValueWhenTrue != 255 || m.ValueWhenFalse != 0)
+            s += " = " + m.ValueWhenTrue + (m.ValueWhenFalse != 0 ? " / " + m.ValueWhenFalse : "");
+        return s;
     }
 
     private void UpdateScriptFromProfile(bool fromForm)
@@ -331,14 +339,43 @@ public partial class ProfileEditorPage : ContentPage
 
     private async void OnAddTriggerClicked(object? sender, EventArgs e)
     {
+        var choice = await DisplayActionSheet("Add trigger", "Cancel", null, "Condition (when …)", "Fixed value (0–255)", "Axis (tracker source)");
+        if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+        var trigger = CmbTrigger.SelectedItem?.ToString() ?? "LeftTrigger";
+
+        if (choice == "Fixed value (0–255)")
+        {
+            var raw = await DisplayPromptAsync("Fixed trigger value", "Value 0–255:", initialValue: "128", maxLength: 3, keyboard: Keyboard.Numeric);
+            if (raw != null && byte.TryParse(raw, out byte val))
+            {
+                _triggerMappings.Add(new TriggerMapping { Trigger = trigger, FixedValue = val });
+                RefreshTriggerList();
+            }
+            return;
+        }
+        if (choice == "Axis (tracker source)")
+        {
+            var tracker = await DisplayActionSheet("Tracker", "Cancel", null, ConfigEditorConstants.TrackerIds);
+            if (string.IsNullOrEmpty(tracker) || tracker == "Cancel") return;
+            var source = await DisplayActionSheet("Source", "Cancel", null, ConfigEditorConstants.AxisSources);
+            if (string.IsNullOrEmpty(source) || source == "Cancel") return;
+            _triggerMappings.Add(new TriggerMapping { Trigger = trigger, Tracker = tracker, Source = source, Scale = 1f, Invert = false });
+            RefreshTriggerList();
+            return;
+        }
+
         MappingCondition? result = null;
         var page = new ConditionEditPage(null, c => result = c);
         await Navigation.PushModalAsync(page);
         if (result != null)
         {
-            var trigger = CmbTrigger.SelectedItem?.ToString() ?? "LeftTrigger";
-            _triggerMappings.Add(new TriggerMapping { Condition = result, Trigger = trigger, ValueWhenTrue = 255, ValueWhenFalse = 0 });
-            RefreshTriggerList();
+            var condition = result;
+            var valuesPage = new TriggerConditionValuesPage(255, 0, (t, f) =>
+            {
+                _triggerMappings.Add(new TriggerMapping { Condition = condition, Trigger = trigger, ValueWhenTrue = t, ValueWhenFalse = f });
+                RefreshTriggerList();
+            });
+            await Navigation.PushModalAsync(valuesPage);
         }
     }
 
@@ -346,16 +383,27 @@ public partial class ProfileEditorPage : ContentPage
     {
         var sel = ListTriggers.SelectedItem?.ToString();
         if (sel == null) return;
-        var idx = _triggerMappings.FindIndex(m => (Summarize(m.Condition) + " → " + m.Trigger) == sel);
+        var idx = _triggerMappings.FindIndex(m => SummarizeTrigger(m) == sel);
         if (idx < 0) return;
         var m = _triggerMappings[idx];
+        if (m.FixedValue.HasValue || (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source)))
+        {
+            await DisplayAlert("Trigger", "Edit fixed value or axis triggers via the Script editor.", "OK");
+            return;
+        }
         MappingCondition? result = null;
         var page = new ConditionEditPage(m.Condition, c => result = c);
         await Navigation.PushModalAsync(page);
         if (result != null)
         {
-            _triggerMappings[idx] = new TriggerMapping { Condition = result, Trigger = m.Trigger, ValueWhenTrue = m.ValueWhenTrue, ValueWhenFalse = m.ValueWhenFalse };
-            RefreshTriggerList();
+            var condition = result;
+            var triggerName = m.Trigger;
+            var valuesPage = new TriggerConditionValuesPage(m.ValueWhenTrue, m.ValueWhenFalse, (t, f) =>
+            {
+                _triggerMappings[idx] = new TriggerMapping { Condition = condition, Trigger = triggerName, ValueWhenTrue = t, ValueWhenFalse = f };
+                RefreshTriggerList();
+            });
+            await Navigation.PushModalAsync(valuesPage);
         }
     }
 
@@ -363,7 +411,7 @@ public partial class ProfileEditorPage : ContentPage
     {
         var sel = ListTriggers.SelectedItem?.ToString();
         if (sel == null) return;
-        var idx = _triggerMappings.FindIndex(m => (Summarize(m.Condition) + " → " + m.Trigger) == sel);
+        var idx = _triggerMappings.FindIndex(m => SummarizeTrigger(m) == sel);
         if (idx >= 0) { _triggerMappings.RemoveAt(idx); RefreshTriggerList(); }
     }
 

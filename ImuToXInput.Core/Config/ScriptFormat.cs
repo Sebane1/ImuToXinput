@@ -29,9 +29,24 @@ namespace ImuToXInput.Config
                 sb.AppendLine("button " + FormatCondition("when", m.Condition) + " -> " + m.Button);
             sb.AppendLine();
 
-            sb.AppendLine("// Trigger: when <expr> -> Trigger");
+            sb.AppendLine("// Trigger: when <expr> -> Trigger [= value] [= trueVal / falseVal] | trigger LeftTrigger = 128 | trigger LeftTrigger = Tracker.Source");
+            sb.AppendLine("// Multiple mappings to same trigger: highest value wins (max of all 0–255).");
             foreach (var m in profile.TriggerMappings)
-                sb.AppendLine("trigger " + FormatCondition("when", m.Condition) + " -> " + m.Trigger);
+            {
+                if (m.FixedValue.HasValue)
+                    sb.AppendLine("trigger " + m.Trigger + " = " + m.FixedValue.Value);
+                else if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source))
+                    sb.AppendLine("trigger " + m.Trigger + " = " + m.Tracker + "." + m.Source + (m.Scale != 1f ? " * " + m.Scale : "") + (m.Invert ? " invert" : ""));
+                else if (m.Condition != null)
+                {
+                    var line = "trigger " + FormatCondition("when", m.Condition) + " -> " + m.Trigger;
+                    if (m.ValueWhenTrue != 255 || m.ValueWhenFalse != 0)
+                        line += " = " + m.ValueWhenTrue + (m.ValueWhenFalse != 0 ? " / " + m.ValueWhenFalse : "");
+                    sb.AppendLine(line);
+                }
+                else
+                    sb.AppendLine("// trigger " + m.Trigger + " (invalid: no condition/fixed/axis)");
+            }
             return sb.ToString();
         }
 
@@ -133,10 +148,67 @@ namespace ImuToXInput.Config
                 }
                 if (line.StartsWith("trigger ", StringComparison.OrdinalIgnoreCase))
                 {
-                    var (cond, trig) = ParseWhenLine(line.Substring(8).Trim(), lineNum);
-                    if (cond != null && trig != null)
-                        profile.TriggerMappings.Add(new TriggerMapping { Condition = cond, Trigger = trig, ValueWhenTrue = 255, ValueWhenFalse = 0 });
-                    continue;
+                    var rest = line.Substring(8).Trim();
+                    // trigger when ... -> LeftTrigger [= 128] or [= 128 / 0] (check first so " = " in RHS isn't treated as fixed)
+                    if (rest.StartsWith("when ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var (cond, trigWhen) = ParseWhenLine(rest, lineNum);
+                        if (cond != null && trigWhen != null)
+                        {
+                            byte valTrue = 255, valFalse = 0;
+                            var triggerName = trigWhen;
+                            var eqIdx = trigWhen.IndexOf(" = ", StringComparison.Ordinal);
+                            if (eqIdx > 0)
+                            {
+                                triggerName = trigWhen.Substring(0, eqIdx).Trim();
+                                var valPart = trigWhen.Substring(eqIdx + 3).Trim();
+                                var slash = valPart.IndexOf(" / ", StringComparison.Ordinal);
+                                if (slash > 0)
+                                {
+                                    if (byte.TryParse(valPart.Substring(0, slash).Trim(), out var vt)) valTrue = vt;
+                                    if (byte.TryParse(valPart.Substring(slash + 3).Trim(), out var vf)) valFalse = vf;
+                                }
+                                else if (byte.TryParse(valPart, out var v))
+                                    valTrue = v;
+                            }
+                            profile.TriggerMappings.Add(new TriggerMapping { Condition = cond, Trigger = triggerName, ValueWhenTrue = valTrue, ValueWhenFalse = valFalse });
+                        }
+                        continue;
+                    }
+                    // trigger LeftTrigger = 128 (unconditional fixed) or trigger LeftTrigger = Tracker.Source [* scale] [invert]
+                    var eq = rest.IndexOf(" = ", StringComparison.Ordinal);
+                    if (eq > 0)
+                    {
+                        var trig = rest.Substring(0, eq).Trim();
+                        var rhs = rest.Substring(eq + 3).Trim();
+                        if (!string.IsNullOrEmpty(trig))
+                        {
+                            if (byte.TryParse(rhs, out byte fixedVal))
+                            {
+                                profile.TriggerMappings.Add(new TriggerMapping { Trigger = trig, FixedValue = fixedVal });
+                                continue;
+                            }
+                            // Axis: RHS is "Tracker.Source [* scale] [invert]"
+                            var parts = rhs.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+                            if (parts.Length >= 1 && parts[0].Contains('.'))
+                            {
+                                var dot = parts[0].IndexOf('.');
+                                var tracker = parts[0].Substring(0, dot);
+                                var source = parts[0].Substring(dot + 1);
+                                if (!string.IsNullOrEmpty(tracker) && !string.IsNullOrEmpty(source))
+                                {
+                                    var axis = new TriggerMapping { Trigger = trig, Tracker = tracker, Source = source, Scale = 1f, Invert = false };
+                                    for (var i = 1; i < parts.Length; i++)
+                                    {
+                                        if (parts[i].Equals("invert", StringComparison.OrdinalIgnoreCase)) axis.Invert = true;
+                                        else if (parts[i] == "*" && i + 1 < parts.Length && float.TryParse(parts[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float sc)) { axis.Scale = sc; i++; }
+                                    }
+                                    profile.TriggerMappings.Add(axis);
+                                }
+                                continue;
+                            }
+                        }
+                    }
                 }
             }
             return profile;

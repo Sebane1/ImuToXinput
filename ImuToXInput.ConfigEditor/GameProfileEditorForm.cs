@@ -301,7 +301,17 @@ public partial class GameProfileEditorForm : Form
     {
         listTriggers.Items.Clear();
         foreach (var m in _triggerMappings)
-            listTriggers.Items.Add(Summarize(m.Condition) + " → " + (m.Trigger ?? ""));
+            listTriggers.Items.Add(SummarizeTrigger(m));
+    }
+
+    private static string SummarizeTrigger(TriggerMapping m)
+    {
+        if (m.FixedValue.HasValue) return "= " + m.FixedValue.Value + " → " + (m.Trigger ?? "");
+        if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source)) return m.Tracker + "." + m.Source + " → " + (m.Trigger ?? "");
+        var s = Summarize(m.Condition) + " → " + (m.Trigger ?? "");
+        if (m.ValueWhenTrue != 255 || m.ValueWhenFalse != 0)
+            s += " = " + m.ValueWhenTrue + (m.ValueWhenFalse != 0 ? " / " + m.ValueWhenFalse : "");
+        return s;
     }
 
     private static string Summarize(MappingCondition? c)
@@ -388,8 +398,28 @@ public partial class GameProfileEditorForm : Form
     {
         using var dlg = new ConditionEditDialog(null);
         if (dlg.ShowDialog() != DialogResult.OK || dlg.Result == null) return;
+        using var valuesDlg = new TriggerConditionValuesDialog(255, 0);
+        if (valuesDlg.ShowDialog() != DialogResult.OK) return;
         var trigger = cmbTrigger.SelectedItem?.ToString() ?? "LeftTrigger";
-        _triggerMappings.Add(new TriggerMapping { Condition = dlg.Result, Trigger = trigger, ValueWhenTrue = 255, ValueWhenFalse = 0 });
+        _triggerMappings.Add(new TriggerMapping { Condition = dlg.Result, Trigger = trigger, ValueWhenTrue = valuesDlg.ValueWhenTrue, ValueWhenFalse = valuesDlg.ValueWhenFalse });
+        RefreshTriggerList();
+    }
+
+    private void btnAddFixedTrigger_Click(object sender, EventArgs e)
+    {
+        using var dlg = new TriggerFixedValueDialog(128);
+        if (dlg.ShowDialog() != DialogResult.OK) return;
+        var trigger = cmbTrigger.SelectedItem?.ToString() ?? "LeftTrigger";
+        _triggerMappings.Add(new TriggerMapping { Trigger = trigger, FixedValue = dlg.Value });
+        RefreshTriggerList();
+    }
+
+    private void btnAddAxisTrigger_Click(object sender, EventArgs e)
+    {
+        using var dlg = new TriggerAxisDialog();
+        if (dlg.ShowDialog() != DialogResult.OK || string.IsNullOrEmpty(dlg.Tracker) || string.IsNullOrEmpty(dlg.Source)) return;
+        var trigger = cmbTrigger.SelectedItem?.ToString() ?? "LeftTrigger";
+        _triggerMappings.Add(new TriggerMapping { Trigger = trigger, Tracker = dlg.Tracker, Source = dlg.Source, Scale = 1f, Invert = false });
         RefreshTriggerList();
     }
 
@@ -398,9 +428,16 @@ public partial class GameProfileEditorForm : Form
         var i = listTriggers.SelectedIndex;
         if (i < 0 || i >= _triggerMappings.Count) return;
         var m = _triggerMappings[i];
+        if (m.FixedValue.HasValue || (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source)))
+        {
+            MessageBox.Show("Edit fixed value or axis triggers via the Script tab or JSON.", "Trigger", MessageBoxButtons.OK);
+            return;
+        }
         using var dlg = new ConditionEditDialog(m.Condition);
         if (dlg.ShowDialog() != DialogResult.OK || dlg.Result == null) return;
-        _triggerMappings[i] = new TriggerMapping { Condition = dlg.Result, Trigger = m.Trigger, ValueWhenTrue = m.ValueWhenTrue, ValueWhenFalse = m.ValueWhenFalse };
+        using var valuesDlg = new TriggerConditionValuesDialog(m.ValueWhenTrue, m.ValueWhenFalse);
+        if (valuesDlg.ShowDialog() != DialogResult.OK) return;
+        _triggerMappings[i] = new TriggerMapping { Condition = dlg.Result, Trigger = m.Trigger, ValueWhenTrue = valuesDlg.ValueWhenTrue, ValueWhenFalse = valuesDlg.ValueWhenFalse };
         RefreshTriggerList();
     }
 

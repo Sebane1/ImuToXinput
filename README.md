@@ -11,7 +11,6 @@ Stepmania controls give you a virtual invisible dance pad laid out like the foll
 
 <img width="185" height="149" alt="image" src="https://github.com/user-attachments/assets/3b67304e-48f4-4558-a213-60100c6cd37d" />
 
-
 ### Configuration (one .json per game)
 
 Game-specific IMU-to-XInput mappings live in a **configs** folder next to the executable. **One JSON file per game** so configs are easy to download and share.
@@ -26,6 +25,8 @@ Each JSON file is a single profile with:
 - **axisMappings**: Tracker rotation/position → thumbsticks (e.g. HEAD → RightThumb for look).
 - **buttonMappings** / **triggerMappings**: Conditions (euler threshold, euler diff/sum, position threshold) that drive buttons and triggers.
 - **trackers**: Optional (e.g. `["LEFT_FOOT","RIGHT_FOOT"]`) — trackers used to update floor height for floor-relative position.
+
+**Trigger priority:** If several trigger mappings target the same trigger (e.g. LeftTrigger), the effective value is the **maximum** of all their values (0–255). So the strongest input wins: e.g. an axis mapping gives 80 and a conditional gives 255 when true → the trigger gets 255.
 
 Condition types: `euler_threshold`, `euler_diff`, `euler_sum`, `position_threshold`. To add a game: add a new `configs/SomeGame.json` and set **processNames** to the game's process name(s). Share that single file for others to drop into their **configs** folder.
 

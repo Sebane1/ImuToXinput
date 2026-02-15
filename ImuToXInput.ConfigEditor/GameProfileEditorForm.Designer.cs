@@ -32,6 +32,8 @@ partial class GameProfileEditorForm
     private ListBox listTriggers;
     private ComboBox cmbTrigger;
     private Button btnAddTrigger;
+    private Button btnAddFixedTrigger;
+    private Button btnAddAxisTrigger;
     private Button btnEditTrigger;
     private Button btnRemoveTrigger;
     private Button btnSave;
@@ -127,15 +129,21 @@ partial class GameProfileEditorForm
         cmbTrigger = new ComboBox { Location = new Point(6, 192), Width = 120, DropDownStyle = ComboBoxStyle.DropDownList };
         cmbTrigger.Items.AddRange(ConfigEditorConstants.Triggers);
         if (cmbTrigger.Items.Count > 0) cmbTrigger.SelectedIndex = 0;
-        btnAddTrigger = new Button { Text = "Add", Location = new Point(132, 190), Width = 60 };
+        btnAddTrigger = new Button { Text = "Add (cond)", Location = new Point(132, 190), Width = 70 };
         btnAddTrigger.Click += btnAddTrigger_Click;
-        btnEditTrigger = new Button { Text = "Edit", Location = new Point(198, 190), Width = 60 };
+        btnAddFixedTrigger = new Button { Text = "Fixed", Location = new Point(208, 190), Width = 50 };
+        btnAddFixedTrigger.Click += btnAddFixedTrigger_Click;
+        btnAddAxisTrigger = new Button { Text = "Axis", Location = new Point(264, 190), Width = 50 };
+        btnAddAxisTrigger.Click += btnAddAxisTrigger_Click;
+        btnEditTrigger = new Button { Text = "Edit", Location = new Point(320, 190), Width = 50 };
         btnEditTrigger.Click += btnEditTrigger_Click;
-        btnRemoveTrigger = new Button { Text = "Remove", Location = new Point(264, 190), Width = 60 };
+        btnRemoveTrigger = new Button { Text = "Remove", Location = new Point(376, 190), Width = 60 };
         btnRemoveTrigger.Click += btnRemoveTrigger_Click;
         tabTriggers.Controls.Add(listTriggers);
         tabTriggers.Controls.Add(cmbTrigger);
         tabTriggers.Controls.Add(btnAddTrigger);
+        tabTriggers.Controls.Add(btnAddFixedTrigger);
+        tabTriggers.Controls.Add(btnAddAxisTrigger);
         tabTriggers.Controls.Add(btnEditTrigger);
         tabTriggers.Controls.Add(btnRemoveTrigger);
 

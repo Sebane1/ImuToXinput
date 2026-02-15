@@ -1,5 +1,4 @@
 using System.Linq;
-using ImuToXInput;
 using ImuToXInput.Core.Output;
 using SlimeImuProtocol.SlimeProtocol;
 
@@ -46,13 +45,51 @@ namespace ImuToXInput.Config
                     output.SetButton(button, value);
             }
 
+            ApplyTriggerMappings(profile, trackers, output, axisDeadzone);
+        }
+
+        /// <summary>
+        /// When multiple trigger mappings target the same trigger, the effective value is the maximum of all their values (0–255).
+        /// So the strongest input wins: e.g. axis gives 80, conditional gives 255 when true → trigger gets 255.
+        /// </summary>
+        private static void ApplyTriggerMappings(
+            GameProfile profile,
+            Dictionary<string, TrackerState> trackers,
+            IGamepadOutput output,
+            float axisDeadzone)
+        {
+            var triggerValues = new Dictionary<GamepadTrigger, byte>
+            {
+                { GamepadTrigger.LeftTrigger, 0 },
+                { GamepadTrigger.RightTrigger, 0 }
+            };
+
             foreach (var m in profile.TriggerMappings)
             {
-                bool cond = EvaluateCondition(m.Condition, trackers);
-                byte value = cond ? m.ValueWhenTrue : m.ValueWhenFalse;
-                if (TryParseTrigger(m.Trigger, out var trigger))
-                    output.SetTrigger(trigger, value);
+                if (!TryParseTrigger(m.Trigger, out var trigger)) continue;
+
+                byte value;
+                if (m.FixedValue.HasValue)
+                    value = m.FixedValue.Value;
+                else if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source) && trackers.TryGetValue(m.Tracker, out var triggerTracker))
+                {
+                    float raw = GetAxisSourceValue(triggerTracker, m.Source) * m.Scale * (m.Invert ? -1f : 1f);
+                    value = FloatToTrigger(raw, axisDeadzone);
+                }
+                else if (m.Condition != null)
+                {
+                    bool cond = EvaluateCondition(m.Condition, trackers);
+                    value = cond ? m.ValueWhenTrue : m.ValueWhenFalse;
+                }
+                else
+                    continue;
+
+                if (value > triggerValues[trigger])
+                    triggerValues[trigger] = value;
             }
+
+            foreach (var kv in triggerValues)
+                output.SetTrigger(kv.Key, kv.Value);
         }
 
         public static short ApplyDeadzone(float value, float deadzone = DefaultDeadzone)
@@ -62,6 +99,15 @@ namespace ImuToXInput.Config
             float sign = Math.Sign(value);
             float scaled = (Math.Abs(value) - deadzone) / (1f - deadzone);
             return (short)(sign * scaled * 32767);
+        }
+
+        /// <summary>Maps a raw axis value (e.g. degrees) to trigger 0-255. Same normalization as axes (÷15, clamp -1..1), then linear map to 0..255. Deadzone maps to 0.</summary>
+        public static byte FloatToTrigger(float value, float deadzone = DefaultDeadzone)
+        {
+            float n = Math.Clamp(value / 15f, -1f, 1f);
+            if (Math.Abs(n) < deadzone) return 0;
+            float t = (n + 1f) * 0.5f; // 0..1
+            return (byte)Math.Clamp((int)(t * 255f), 0, 255);
         }
 
         private static float GetAxisSourceValue(TrackerState t, string source)

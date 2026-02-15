@@ -8,6 +8,10 @@ public partial class MainPage : ContentPage
     private string _configFolder = "";
     private string _configFolderDisplay = "";
 
+    public const string ActiveProfilePreferenceKey = "ActiveProfileFileName";
+    /// <summary>When set to "stepmania", mapping uses dance pad / StepMania mode instead of profile or FPS.</summary>
+    public const string OverrideGameModePreferenceKey = "OverrideGameMode";
+
     public MainPage()
     {
         InitializeComponent();
@@ -17,6 +21,49 @@ public partial class MainPage : ContentPage
         SetConfigFolder(configsPath);
         RefreshList();
         BtnDongle.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
+        BtnBrowse.IsVisible = DeviceInfo.Platform != DevicePlatform.Android;
+        BorderActiveProfile.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
+        BorderDancePad.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
+        RefreshActiveProfileLabel();
+        RefreshDancePadSwitch();
+    }
+
+    private void RefreshActiveProfileLabel()
+    {
+        if (!BorderActiveProfile.IsVisible) return;
+        var name = Preferences.Default.Get(ActiveProfilePreferenceKey, "");
+        LblActiveProfile.Text = string.IsNullOrEmpty(name) ? "None" : name;
+    }
+
+    private void RefreshDancePadSwitch()
+    {
+        if (!BorderDancePad.IsVisible) return;
+        SwitchDancePad.IsToggled = string.Equals(Preferences.Default.Get(OverrideGameModePreferenceKey, ""), "stepmania", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void OnDancePadToggled(object? sender, ToggledEventArgs e)
+    {
+        Preferences.Default.Set(OverrideGameModePreferenceKey, e.Value ? "stepmania" : "");
+    }
+
+    private async void OnSetActiveProfileClicked(object? sender, EventArgs e)
+    {
+        if (string.IsNullOrEmpty(_configFolder) || !Directory.Exists(_configFolder)) return;
+        var files = Directory.GetFiles(_configFolder, "*.json", SearchOption.TopDirectoryOnly)
+            .Select(Path.GetFileName)
+            .Where(f => !string.IsNullOrEmpty(f))
+            .Cast<string>()
+            .ToList();
+        if (files.Count == 0)
+        {
+            await DisplayAlert("Active profile", "Create or download a profile first.", "OK");
+            return;
+        }
+        var choice = await DisplayActionSheet("Use which profile for mapping?", "Cancel", null, files.ToArray());
+        if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+        Preferences.Default.Set(ActiveProfilePreferenceKey, choice);
+        RefreshActiveProfileLabel();
+        await DisplayAlert("Active profile", $"Using \"{choice}\" for mapping.", "OK");
     }
 
     private async void OnDongleClicked(object? sender, EventArgs e)
@@ -43,6 +90,8 @@ public partial class MainPage : ContentPage
             .Cast<string>()
             .ToList();
         ListConfigs.ItemsSource = files;
+        if (BorderActiveProfile.IsVisible)
+            RefreshActiveProfileLabel();
     }
 
     private async void OnBrowseClicked(object? sender, EventArgs e)

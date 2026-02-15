@@ -19,14 +19,20 @@ namespace ImuToXInput.Config
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFolderName);
         }
 
+        /// <summary>Load config from the default config directory (e.g. app base + configs).</summary>
         public static LoadedConfig? Load()
         {
-            var dir = GetConfigDirectory();
-            if (!Directory.Exists(dir))
+            return LoadFromDirectory(GetConfigDirectory());
+        }
+
+        /// <summary>Load config from a specific directory (e.g. MAUI FileSystem.AppDataDirectory/configs).</summary>
+        public static LoadedConfig? LoadFromDirectory(string configDirectory)
+        {
+            if (string.IsNullOrEmpty(configDirectory) || !Directory.Exists(configDirectory))
                 return null;
 
             var result = new LoadedConfig();
-            var files = Directory.GetFiles(dir, "*.json", SearchOption.TopDirectoryOnly);
+            var files = Directory.GetFiles(configDirectory, "*.json", SearchOption.TopDirectoryOnly);
 
             foreach (var path in files)
             {

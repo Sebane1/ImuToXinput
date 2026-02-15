@@ -22,6 +22,10 @@ namespace ImuToXInput.Config
         [JsonProperty("buttonMappings")]
         public List<ButtonMapping> ButtonMappings { get; set; } = new();
 
+        /// <summary>
+        /// Trigger mappings. Multiple mappings can target the same trigger; the effective value is the maximum of all their values (0–255).
+        /// See ConfigApplier.ApplyTriggerMappings.
+        /// </summary>
         [JsonProperty("triggerMappings")]
         public List<TriggerMapping> TriggerMappings { get; set; } = new();
 
@@ -141,8 +145,27 @@ namespace ImuToXInput.Config
 
     public class TriggerMapping
     {
+        /// <summary>When set, trigger is set to this value every frame (0-255). Ignores condition and axis.</summary>
+        [JsonProperty("fixedValue")]
+        public byte? FixedValue { get; set; }
+
+        /// <summary>When set with Source, trigger is driven by tracker axis (0-255). Ignores condition and fixedValue.</summary>
+        [JsonProperty("tracker")]
+        public string? Tracker { get; set; }
+
+        /// <summary>Axis source for analogue trigger: EulerX, EulerY, EulerZ, PosX, PosY, PosZ, FloorRelX, FloorRelY, FloorRelZ.</summary>
+        [JsonProperty("source")]
+        public string? Source { get; set; }
+
+        [JsonProperty("scale")]
+        public float Scale { get; set; } = 1f;
+
+        [JsonProperty("invert")]
+        public bool Invert { get; set; }
+
+        /// <summary>When condition is used: value when condition is true (0-255).</summary>
         [JsonProperty("condition")]
-        public MappingCondition Condition { get; set; } = null!;
+        public MappingCondition? Condition { get; set; }
 
         [JsonProperty("trigger")]
         public string Trigger { get; set; } = "";

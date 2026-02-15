@@ -20,7 +20,13 @@
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION</DefineConstants>
   </PropertyGroup>
 
-  <!-- MAUI packages come from the workload (dotnet workload install maui), not NuGet. -->
+  <!-- Explicit MAUI packages required for Android (workload alone can miss assemblies/Glide). -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.31" />
+    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="10.0.31" />
+    <!-- Theme.MaterialComponents required for TextAppearance (e.g. Material buttons). -->
+    <PackageReference Include="Xamarin.Google.Android.Material" Version="1.12.0.5" Condition="$(TargetFramework.Contains('android'))" />
+  </ItemGroup>
 
   <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
     <PackageReference Include="Nefarius.ViGEm.Client" Version="1.21.256" />
@@ -29,6 +35,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ImuToXInput.Core\ImuToXInput.Core.csproj" />
     <ProjectReference Include="..\SlimeImuProtocol\SlimeImuProtocol.csproj" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <!-- Exclude platform folders when not building for that platform -->

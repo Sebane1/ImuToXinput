@@ -3,7 +3,7 @@
 Cross-platform ImuToXInput app with the configurator built in.
 
 - **Windows**: Uses ViGEm (virtual Xbox 360 controller). Same behavior as the desktop `ImuToXInput` exe.
-- **Android**: BLE output stub; implement `BleGamepadOutput` to send reports to an nRF dongle.
+- **Android**: BLE output to nRF dongle; use **Connect to nRF dongle** to scan, connect, and stream 12-byte reports at ~125 Hz.
 
 ## Building
 
@@ -39,6 +39,6 @@ If the workload install fails or the MAUI project still doesn’t build, open th
 
 - **Shared**: `MainPage` (profile list), `ProfileEditorPage` (script editor), config load/save via `ImuToXInput.Core`.
 - **Platforms/Windows**: `ViGEmGamepadOutput` – forwards to ViGEm virtual controller.
-- **Platforms/Android**: `BleGamepadOutput` – stub; add BLE GATT client to send HID reports to the nRF.
+- **Platforms/Android**: `BleGamepadOutput` (gamepad state), `JocpClient` – send JOCP packets over UDP to Joypad OS (e.g. 192.168.4.1:30100).
 
 The mapping engine and config format live in **ImuToXInput.Core** and are shared with the desktop app and ConfigEditor.

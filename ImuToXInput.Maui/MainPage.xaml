@@ -4,7 +4,14 @@
              x:Class="ImuToXInput.Maui.MainPage"
              Title="ImuToXInput - Game profiles">
     <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="16">
+        <VerticalStackLayout Spacing="16">
+            <VerticalStackLayout.Padding>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="Android" Value="20,80,20,20" />
+                    <On Platform="WinUI" Value="20" />
+                    <On Platform="Default" Value="20" />
+                </OnPlatform>
+            </VerticalStackLayout.Padding>
             <Border Stroke="#ccc" StrokeThickness="1" Padding="12">
                 <VerticalStackLayout Spacing="6">
                     <Label Text="Config folder" FontAttributes="Bold" FontSize="14" />
@@ -19,8 +26,7 @@
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="x:String">
                             <Grid Padding="14,10" ColumnDefinitions="*,Auto">
-                                <Label Text="{Binding}" FontSize="15" VerticalOptions="Center"
-                                       LineBreakMode="TailTruncation" />
+                                <Label Text="{Binding}" FontSize="15" VerticalOptions="Center" LineBreakMode="TailTruncation" />
                                 <Label Grid.Column="1" Text="›" FontSize="18" TextColor="#888" VerticalOptions="Center" />
                             </Grid>
                         </DataTemplate>
@@ -31,6 +37,7 @@
                 <Button x:Name="BtnNew" Text="New profile" Clicked="OnNewClicked" Grid.Column="0" />
                 <Button x:Name="BtnEdit" Text="Edit selected" Clicked="OnEditClicked" Grid.Column="1" />
             </Grid>
+            <Button x:Name="BtnDongle" Text="Joypad WiFi" Clicked="OnDongleClicked" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

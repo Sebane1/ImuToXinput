@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material Components theme required for TextAppearance (e.g. buttons). Still AppCompat-compatible. -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.DarkActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@color/color_primary_dark</item>
+        <item name="android:windowActionBarOverlay">false</item>
+        <item name="colorPrimary">@color/color_primary</item>
+        <item name="colorPrimaryDark">@color/color_primary_dark</item>
+        <item name="colorAccent">@color/color_accent</item>
+    </style>
+    <!-- Placeholder for API &lt; 35; values-v35 has the real OptOutEdgeToEdgeEnforcement -->
+    <style name="OptOutEdgeToEdgeEnforcement" />
+</resources>

@@ -16,6 +16,12 @@ public partial class MainPage : ContentPage
             Directory.CreateDirectory(configsPath);
         SetConfigFolder(configsPath);
         RefreshList();
+        BtnDongle.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
+    }
+
+    private async void OnDongleClicked(object? sender, EventArgs e)
+    {
+        await Navigation.PushAsync(new DongleConnectPage());
     }
 
     private void SetConfigFolder(string path)
@@ -56,10 +62,7 @@ public partial class MainPage : ContentPage
         }
     }
 
-    private void OnProfileSelected(object? sender, SelectionChangedEventArgs e)
-    {
-        // Selection is used for Edit
-    }
+    private void OnProfileSelected(object? sender, SelectionChangedEventArgs e) { }
 
     private async void OnNewClicked(object? sender, EventArgs e)
     {

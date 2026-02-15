@@ -1,6 +1,7 @@
 using System.Linq;
 using ImuToXInput;
 using ImuToXInput.Core.Output;
+using SlimeImuProtocol.SlimeProtocol;
 
 namespace ImuToXInput.Config
 {

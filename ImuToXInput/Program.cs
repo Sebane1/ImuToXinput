@@ -5,6 +5,7 @@ using ImuToXInput.Platform;
 using Nefarius.ViGEm.Client;
 using Nefarius.ViGEm.Client.Targets;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
+using SlimeImuProtocol.SlimeProtocol;
 using SlimeImuProtocol.SlimeVR;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -126,23 +127,23 @@ namespace ImuToXInput
                 }
             }
 
-            //// Fallback when no config or no matching profile: legacy hardcoded modes
-            //switch (runningGame)
-            //{
-            //    case "MirrorsEdge":
-            //        MirrorsEdge();
-            //        break;
-            //    case "ffxiv_dx11":
-            //        FFXIV();
-            //        break;
-            //    case "portal":
-            //    case "portal2":
-            //        Portal();
-            //        break;
-            //    default:
-            //        FPS();
-            //        break;
-            //}
+            // Fallback when no config or no matching profile: legacy hardcoded modes
+            switch (runningGame)
+            {
+                case "MirrorsEdge":
+                    MirrorsEdge();
+                    break;
+                case "ffxiv_dx11":
+                    FFXIV();
+                    break;
+                case "portal":
+                case "portal2":
+                    Portal();
+                    break;
+                default:
+                    FPS();
+                    break;
+            }
         }
 
         private static void Portal()
@@ -513,11 +514,11 @@ namespace ImuToXInput
                             _hapticClients[trackerIp] = new UdpClient();
                             _hapticClients[trackerIp].Connect(trackerIp, 6969);
                         }
-                        _hapticClients[trackerIp].Send(data, data.Length);
+                        _hapticClients[trackerIp].SendAsync(data.ToArray(), data.Length);
 
                         Thread.Sleep(duration);
                         var endData = packetBuilder.BuildHapticPacket(0, 0);
-                        _hapticClients[trackerIp].Send(endData, data.Length);
+                        _hapticClients[trackerIp].Send(endData.ToArray(), data.Length);
                     }
                 });
             } catch (Exception ex)

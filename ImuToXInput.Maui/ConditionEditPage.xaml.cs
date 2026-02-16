@@ -25,9 +25,13 @@ public partial class ConditionEditPage : ContentPage
         PickerType.SelectedIndexChanged += (_, _) => RefreshConditionFields();
 
         if (_existing != null)
+        {
             PickerType.SelectedItem = _existing.Type;
+        }
         else
+        {
             PickerType.SelectedIndex = 0;
+        }
 
         RefreshConditionFields();
     }
@@ -123,7 +127,9 @@ public partial class ConditionEditPage : ContentPage
         }
 
         if (_existing != null)
+        {
             LoadCondition(_existing);
+        }
     }
 
     private async void OnOkClicked(object? sender, EventArgs e)
@@ -149,7 +155,9 @@ public partial class ConditionEditPage : ContentPage
         var type = PickerType.SelectedItem?.ToString() ?? "";
         var op = _pickerOp?.SelectedItem?.ToString() ?? "greater_than";
         if (!float.TryParse(_entryValue?.Text, out var value))
+        {
             value = 0f;
+        }
 
         return type switch
         {

@@ -40,17 +40,25 @@ public sealed class JocpClient
     {
         Stop();
         if (_getReport == null)
+        {
             return;
+        }
 
         try
         {
             IPAddress? addr = null;
             if (IPAddress.TryParse(host, out var parsed) && parsed.AddressFamily == AddressFamily.InterNetwork)
+            {
                 addr = parsed;
+            }
             if (addr == null)
+            {
                 addr = Dns.GetHostAddresses(host).FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork);
+            }
             if (addr == null)
+            {
                 throw new InvalidOperationException("Could not resolve host.");
+            }
             _remote = new IPEndPoint(addr, port);
             _udp = new UdpClient(AddressFamily.InterNetwork);
             _udp.Connect(_remote);
@@ -69,7 +77,9 @@ public sealed class JocpClient
 
             Current = this;
             if (!_disposed)
+            {
                 ConnectionStateChanged?.Invoke(this, true);
+            }
         }
         catch
         {
@@ -92,9 +102,13 @@ public sealed class JocpClient
         Host = null;
         Port = 0;
         if (Current == this)
+        {
             Current = null;
+        }
         if (!_disposed)
+        {
             ConnectionStateChanged?.Invoke(this, false);
+        }
     }
 
     private void StopTimer()

@@ -61,7 +61,7 @@ public static class ScriptHighlightHelper
         }
 
         // Keywords at line start
-        var lineStartKeywords = new[] { "processNames", "trackers", "name", "axis", "button", "trigger" };
+        var lineStartKeywords = new[] { "processNames", "trackers", "name", "axis", "button", "trigger", "menuModeToggle" };
         foreach (var kw in lineStartKeywords)
         {
             int pos = 0;
@@ -114,7 +114,9 @@ public static class ScriptHighlightHelper
             for (int i = m.Index; i < m.Index + m.Length && i < used.Length; i++)
             { if (used[i]) { anyUsed = true; break; } }
             if (!anyUsed)
+            {
                 spans.Add((m.Index, m.Length, numberIdx));
+            }
         }
 
         int Order(int idx) => idx == commentIdx ? 0 : idx == numberIdx ? 1 : idx == keywordIdx ? 2 : 3;
@@ -147,14 +149,18 @@ public static class ScriptHighlightHelper
                 while (j < lineEnd && colorAt[j] == segColor) j++;
                 string seg = text.Substring(i, j - i);
                 if (seg.Length > 0)
+                {
                     lineSegments.Add((seg, segColor));
+                }
                 i = j;
             }
             lines.Add(lineSegments);
             pos = lineEnd + (lineEnd < text.Length ? 1 : 0);
         }
         if (lines.Count == 0)
+        {
             lines.Add(new List<(string Text, int ColorIndex)>());
+        }
         return lines;
     }
 

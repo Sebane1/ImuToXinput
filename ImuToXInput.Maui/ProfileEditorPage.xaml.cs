@@ -46,26 +46,58 @@ public partial class ProfileEditorPage : ContentPage
         return c.Type ?? "";
     }
 
+    private void RefreshPrimaryProfileButtons()
+    {
+        PrimaryProfileButtons.Children.Clear();
+        var processNames = _processNames.ToList();
+        PrimaryProfileSection.IsVisible = processNames.Count > 0 && !string.Equals(_suggestedFileName, ConfigLoader.DefaultConfigFileName, StringComparison.OrdinalIgnoreCase);
+        foreach (var processName in processNames)
+        {
+            var p = processName;
+            var btn = new Button { Text = $"Set as primary for {p}" };
+            if (Resources.TryGetValue("CompactButton", out var res) && res is Style s)
+            {
+                btn.Style = s;
+            }
+            btn.Clicked += (_, _) =>
+            {
+                PrimaryProfilesPreferences.SetPrimaryProfile(_configFolder, p, _suggestedFileName);
+                DisplayAlert("Primary profile", $"\"{_suggestedFileName}\" is now the primary profile for {p}.", "OK");
+            };
+            PrimaryProfileButtons.Children.Add(btn);
+        }
+    }
+
     private void LoadProfile()
     {
         TxtName.Text = _profile.Name ?? "";
         _processNames.Clear();
         if (_profile.ProcessNames != null)
-            foreach (var p in _profile.ProcessNames) _processNames.Add(p);
+        {
+            foreach (var p in _profile.ProcessNames) { _processNames.Add(p); }
+        }
+        RefreshPrimaryProfileButtons();
         _trackers.Clear();
         if (_profile.Trackers != null)
-            foreach (var t in _profile.Trackers) _trackers.Add(t);
+        {
+            foreach (var t in _profile.Trackers) { _trackers.Add(t); }
+        }
 
         _buttonMappings.Clear();
         if (_profile.ButtonMappings != null)
+        {
             _buttonMappings.AddRange(_profile.ButtonMappings);
+        }
         _triggerMappings.Clear();
         if (_profile.TriggerMappings != null)
+        {
             _triggerMappings.AddRange(_profile.TriggerMappings);
+        }
 
         RefreshAxisList();
         RefreshButtonList();
         RefreshTriggerList();
+        RefreshMenuModeToggleLabel();
         UpdateScriptFromProfile(fromForm: false);
     }
 
@@ -184,7 +216,9 @@ public partial class ProfileEditorPage : ContentPage
         if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source)) return m.Tracker + "." + m.Source + " → " + m.Trigger;
         var s = Summarize(m.Condition) + " → " + m.Trigger;
         if (m.ValueWhenTrue != 255 || m.ValueWhenFalse != 0)
+        {
             s += " = " + m.ValueWhenTrue + (m.ValueWhenFalse != 0 ? " / " + m.ValueWhenFalse : "");
+        }
         return s;
     }
 
@@ -204,7 +238,9 @@ public partial class ProfileEditorPage : ContentPage
             // Result is base64 from the WebView (avoids bridge mangling newlines/quotes)
             result = result.Trim();
             if (result.StartsWith('"') && result.EndsWith('"'))
+            {
                 result = Newtonsoft.Json.JsonConvert.DeserializeObject<string>(result) ?? result;
+            }
             try
             {
                 var bytes = Convert.FromBase64String(result);
@@ -240,9 +276,12 @@ public partial class ProfileEditorPage : ContentPage
                 _profile.AxisMappings = parsed.AxisMappings;
                 _profile.ButtonMappings = parsed.ButtonMappings;
                 _profile.TriggerMappings = parsed.TriggerMappings;
+                _profile.MenuModeToggleCondition = parsed.MenuModeToggleCondition;
             }
             else
+            {
                 SaveFormToProfile();
+            }
 
             var dupWarnings = ProfileValidation.GetDuplicateMappingWarnings(_profile);
             if (dupWarnings.Count > 0)
@@ -257,7 +296,9 @@ public partial class ProfileEditorPage : ContentPage
             var invalid = Path.GetInvalidFileNameChars();
             var fileName = string.Concat(name.Select(c => invalid.Contains(c) ? '_' : c));
             if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
                 fileName += ".json";
+            }
             var path = Path.Combine(_configFolder, fileName);
             var json = Newtonsoft.Json.JsonConvert.SerializeObject(_profile, Newtonsoft.Json.Formatting.Indented);
             await File.WriteAllTextAsync(path, json);
@@ -283,19 +324,26 @@ public partial class ProfileEditorPage : ContentPage
     private void OnRemoveProcessNameClicked(object? sender, EventArgs e)
     {
         if (ListProcessNames.SelectedItem is string s)
+        {
             _processNames.Remove(s);
+            RefreshPrimaryProfileButtons();
+        }
     }
 
     private void OnAddFloorTrackerClicked(object? sender, EventArgs e)
     {
         if (CmbFloorTracker.SelectedItem is string t)
+        {
             _trackers.Add(t);
+        }
     }
 
     private void OnRemoveFloorTrackerClicked(object? sender, EventArgs e)
     {
         if (ListFloorTrackers.SelectedItem is string s)
+        {
             _trackers.Remove(s);
+        }
     }
 
     private void OnAddAxisClicked(object? sender, EventArgs e)
@@ -446,6 +494,30 @@ public partial class ProfileEditorPage : ContentPage
         _profile.AxisMappings = parsed.AxisMappings;
         _profile.ButtonMappings = parsed.ButtonMappings;
         _profile.TriggerMappings = parsed.TriggerMappings;
+        _profile.MenuModeToggleCondition = parsed.MenuModeToggleCondition;
         LoadProfile();
+    }
+
+    private void RefreshMenuModeToggleLabel()
+    {
+        LblMenuModeToggle.Text = _profile.MenuModeToggleCondition != null ? Summarize(_profile.MenuModeToggleCondition) : "Not set";
+    }
+
+    private async void OnSetMenuModeToggleClicked(object? sender, EventArgs e)
+    {
+        MappingCondition? result = null;
+        var page = new ConditionEditPage(_profile.MenuModeToggleCondition, c => result = c);
+        await Navigation.PushModalAsync(page);
+        if (result != null)
+        {
+            _profile.MenuModeToggleCondition = result;
+            RefreshMenuModeToggleLabel();
+        }
+    }
+
+    private void OnClearMenuModeToggleClicked(object? sender, EventArgs e)
+    {
+        _profile.MenuModeToggleCondition = null;
+        RefreshMenuModeToggleLabel();
     }
 }

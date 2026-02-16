@@ -32,7 +32,9 @@ public partial class SharedConfigsPage : ContentPage
                 LblEmpty.IsVisible = true;
             }
             else
+            {
                 LblEmpty.IsVisible = false;
+            }
         }
         catch (Exception ex)
         {
@@ -58,11 +60,15 @@ public partial class SharedConfigsPage : ContentPage
                 return;
             }
             if (!Directory.Exists(ConfigFolder))
+            {
                 Directory.CreateDirectory(ConfigFolder);
+            }
             var safeName = string.Join("_", full.GameName.Split(Path.GetInvalidFileNameChars()));
             var fileName = $"{safeName}_{full.ConfigName}.json".Replace(" ", "_");
             if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
                 fileName += ".json";
+            }
             var path = Path.Combine(ConfigFolder, fileName);
             await File.WriteAllTextAsync(path, full.JsonContent);
             await DisplayAlert("Download", $"Saved as {fileName}", "OK");
@@ -101,9 +107,13 @@ public partial class SharedConfigsPage : ContentPage
             var configName = Path.GetFileNameWithoutExtension(choice);
             var result = await _service.UploadAsync(gameName, configName, json);
             if (result != null)
+            {
                 await DisplayAlert("Upload", $"Shared as {result.GameName} / {result.ConfigName}.", "OK");
+            }
             else
+            {
                 await DisplayAlert("Upload", "Upload failed. Check server URL and connection.", "OK");
+            }
         }
         catch (Exception ex)
         {

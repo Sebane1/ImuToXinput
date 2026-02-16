@@ -17,7 +17,9 @@ public partial class DongleConnectPage : ContentPage
 #if ANDROID
         UpdateJocpStatus();
         if (_jocpClient != null)
+        {
             _jocpClient.ConnectionStateChanged += OnJocpConnectionStateChanged;
+        }
 #endif
     }
 
@@ -25,7 +27,9 @@ public partial class DongleConnectPage : ContentPage
     {
 #if ANDROID
         if (_jocpClient != null)
+        {
             _jocpClient.ConnectionStateChanged -= OnJocpConnectionStateChanged;
+        }
 #endif
         base.OnDisappearing();
     }
@@ -60,10 +64,14 @@ public partial class DongleConnectPage : ContentPage
         var host = (EntryJocpHost.Text ?? "192.168.4.1").Trim();
         if (string.IsNullOrEmpty(host)) host = "192.168.4.1";
         if (!int.TryParse(EntryJocpPort.Text?.Trim(), out int port) || port <= 0 || port > 65535)
+        {
             port = 30100;
+        }
 
         if (_jocpClient == null)
+        {
             _jocpClient = new Platforms.Android.JocpClient();
+        }
 
         _jocpClient.SetReportProvider(() => Platforms.Android.BleGamepadOutput.Instance.GetReportBytes());
         try

@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="ImuToXInput.Maui.ProfileEditorPage"
+             x:Name="ThisPage"
              Title="Edit profile">
     <ContentPage.Resources>
         <Style TargetType="Button" x:Key="CompactButton">
@@ -23,6 +24,11 @@
                 <Button x:Name="BtnRemoveProcessName" Text="Remove" Grid.Column="2" Clicked="OnRemoveProcessNameClicked" Style="{StaticResource CompactButton}" />
             </Grid>
             <CollectionView x:Name="ListProcessNames" HeightRequest="80" SelectionMode="Single" />
+
+            <VerticalStackLayout x:Name="PrimaryProfileSection" IsVisible="False" Spacing="8">
+                <Label Text="Primary profile (when multiple profiles target the same game)" FontAttributes="Bold" />
+                <VerticalStackLayout x:Name="PrimaryProfileButtons" Spacing="4" />
+            </VerticalStackLayout>
 
             <Label Text="Trackers (for floor-relative position)" />
             <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
@@ -61,11 +67,21 @@
             </Grid>
             <CollectionView x:Name="ListTriggers" HeightRequest="100" SelectionMode="Single" />
 
+            <!-- Menu mode toggle: gesture toggles menu mode (no controller output) -->
+            <VerticalStackLayout Spacing="8">
+                <Label Text="Menu mode toggle (gesture toggles menu mode; no controller output)" FontAttributes="Bold" FontSize="18" />
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                    <Label x:Name="LblMenuModeToggle" Text="Not set" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                    <Button x:Name="BtnSetMenuModeToggle" Text="Set gesture" Grid.Column="1" Clicked="OnSetMenuModeToggleClicked" Style="{StaticResource CompactButton}" />
+                    <Button x:Name="BtnClearMenuModeToggle" Text="Clear" Grid.Column="2" Clicked="OnClearMenuModeToggleClicked" Style="{StaticResource CompactButton}" />
+                </Grid>
+            </VerticalStackLayout>
+
             <!-- Script: single WebView with textarea (no CDN = always visible and clickable) -->
             <Label Text="Script (axis/button/trigger)" FontAttributes="Bold" FontSize="18" />
             <VerticalStackLayout Spacing="8">
                 <Border Stroke="#808080" StrokeThickness="1" Background="#FFF8F0" Padding="0">
-                    <WebView x:Name="ScriptWebView" HeightRequest="280" MinimumHeightRequest="200" />
+                    <WebView x:Name="ScriptWebView" HeightRequest="380" MinimumHeightRequest="200" />
                 </Border>
                 <HorizontalStackLayout Spacing="12">
                     <Button x:Name="BtnRefreshFromForm" Text="Refresh from form" Clicked="OnRefreshFromFormClicked" Style="{StaticResource CompactButton}" />

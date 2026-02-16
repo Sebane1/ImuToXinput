@@ -15,7 +15,9 @@ public static partial class ControllerLoopService
         GetOutput = () =>
         {
             if (_windowsOutput != null)
+            {
                 return _windowsOutput;
+            }
             try
             {
                 _vigemClient = new ViGEmClient();

@@ -11,21 +11,33 @@ public partial class MainPage : ContentPage
     public const string ActiveProfilePreferenceKey = "ActiveProfileFileName";
     /// <summary>When set to "stepmania", mapping uses dance pad / StepMania mode instead of profile or FPS.</summary>
     public const string OverrideGameModePreferenceKey = "OverrideGameMode";
+    /// <summary>When true, thumbsticks snap to neutral after hold and require return to deadzone (menu-friendly).</summary>
+    public const string MenuModePreferenceKey = "ThumbstickMenuMode";
 
     public MainPage()
     {
         InitializeComponent();
         var configsPath = Path.Combine(FileSystem.AppDataDirectory, "configs");
         if (!Directory.Exists(configsPath))
+        {
             Directory.CreateDirectory(configsPath);
+        }
         SetConfigFolder(configsPath);
         RefreshList();
         BtnDongle.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
         BtnBrowse.IsVisible = DeviceInfo.Platform != DevicePlatform.Android;
         BorderActiveProfile.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
         BorderDancePad.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
+        BorderMenuMode.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
         RefreshActiveProfileLabel();
         RefreshDancePadSwitch();
+        RefreshMenuModeSwitch();
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        RefreshMenuModeSwitch(); // Update when returning (e.g. after gesture toggles menu mode)
     }
 
     private void RefreshActiveProfileLabel()
@@ -44,6 +56,17 @@ public partial class MainPage : ContentPage
     private void OnDancePadToggled(object? sender, ToggledEventArgs e)
     {
         Preferences.Default.Set(OverrideGameModePreferenceKey, e.Value ? "stepmania" : "");
+    }
+
+    private void RefreshMenuModeSwitch()
+    {
+        if (!BorderMenuMode.IsVisible) return;
+        SwitchMenuMode.IsToggled = Preferences.Default.Get(MenuModePreferenceKey, false);
+    }
+
+    private void OnMenuModeToggled(object? sender, ToggledEventArgs e)
+    {
+        Preferences.Default.Set(MenuModePreferenceKey, e.Value);
     }
 
     private async void OnSetActiveProfileClicked(object? sender, EventArgs e)
@@ -88,7 +111,9 @@ public partial class MainPage : ContentPage
     {
         ListConfigs.ItemsSource = null;
         if (string.IsNullOrEmpty(_configFolder) || !Directory.Exists(_configFolder))
+        {
             return;
+        }
         var files = Directory.GetFiles(_configFolder, "*.json", SearchOption.TopDirectoryOnly)
             .Select(Path.GetFileName)
             .Where(f => !string.IsNullOrEmpty(f))
@@ -97,7 +122,9 @@ public partial class MainPage : ContentPage
             .ToList();
         ListConfigs.ItemsSource = files;
         if (BorderActiveProfile.IsVisible)
+        {
             RefreshActiveProfileLabel();
+        }
     }
 
     private async void OnBrowseClicked(object? sender, EventArgs e)

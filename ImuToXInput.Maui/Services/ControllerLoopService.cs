@@ -22,6 +22,8 @@ public static partial class ControllerLoopService
     private static bool _running;
     private static string? _cachedActiveFileName;
     private static GameProfile? _cachedActiveProfile;
+    private static readonly ThumbstickMenuModeState _menuModeState = new();
+    private static readonly MenuModeToggleState _menuModeToggleState = new();
 
     /// <summary>Start the SlimeVR client and the mapping timer. Call once when the app is ready.</summary>
     public static void Start()
@@ -30,11 +32,15 @@ public static partial class ControllerLoopService
 
         var output = GetOutput?.Invoke();
         if (output == null)
+        {
             return;
+        }
 
         _configDirectory = Path.Combine(FileSystem.AppDataDirectory, "configs");
         if (!Directory.Exists(_configDirectory))
+        {
             Directory.CreateDirectory(_configDirectory);
+        }
 
         _loadedConfig = ConfigLoader.LoadFromDirectory(_configDirectory);
 
@@ -88,7 +94,13 @@ public static partial class ControllerLoopService
                 }
             }
 
-            ControllerMappingRunner.Update(trackers, output, _loadedConfig, () => overrideMode, activeOverride);
+            var menuMode = Preferences.Default.Get(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, false);
+            void OnMenuModeToggleRequested()
+            {
+                var current = Preferences.Default.Get(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, false);
+                Preferences.Default.Set(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, !current);
+            }
+            ControllerMappingRunner.Update(trackers, output, _loadedConfig, () => overrideMode, activeOverride, menuMode, menuMode ? _menuModeState : null, OnMenuModeToggleRequested, _menuModeToggleState);
         }
     }
 

@@ -27,7 +27,9 @@ public partial class MainForm : Form
     {
         listConfigs.Items.Clear();
         if (string.IsNullOrEmpty(_configFolder) || !Directory.Exists(_configFolder))
+        {
             return;
+        }
         var files = Directory.GetFiles(_configFolder, "*.json", SearchOption.TopDirectoryOnly)
             .Select(Path.GetFileName)
             .OrderBy(f => f?.ToLowerInvariant() == "default.json" ? "" : f)
@@ -136,4 +138,36 @@ public partial class MainForm : Form
     }
 
     private void listConfigs_DoubleClick(object sender, EventArgs e) => btnEdit_Click(sender, e);
+
+    private void listConfigs_MouseDown(object? sender, MouseEventArgs e)
+    {
+        if (e.Button != MouseButtons.Right) return;
+        var idx = listConfigs.IndexFromPoint(e.Location);
+        if (idx < 0) return;
+        var fileName = listConfigs.Items[idx]?.ToString();
+        if (string.IsNullOrEmpty(fileName) || string.Equals(fileName, ConfigLoader.DefaultConfigFileName, StringComparison.OrdinalIgnoreCase))
+        {
+            return; // default.json uses DefaultProfile, not primary-per-game
+        }
+        var path = Path.Combine(_configFolder, fileName);
+        if (!File.Exists(path)) return;
+        try
+        {
+            var json = File.ReadAllText(path);
+            var profile = JsonConvert.DeserializeObject<GameProfile>(json);
+            if (profile?.ProcessNames == null || profile.ProcessNames.Count == 0) return;
+            var menu = new ContextMenuStrip();
+            foreach (var processName in profile.ProcessNames)
+            {
+                var p = processName;
+                menu.Items.Add($"Set as primary for {p}", null, (_, _) =>
+                {
+                    PrimaryProfilesPreferences.SetPrimaryProfile(_configFolder, p, fileName);
+                    MessageBox.Show($"\"{fileName}\" is now the primary profile for {p}.", "Primary profile");
+                });
+            }
+            menu.Show(listConfigs, e.Location);
+        }
+        catch { /* ignore */ }
+    }
 }

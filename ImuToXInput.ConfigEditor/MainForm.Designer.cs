@@ -7,7 +7,9 @@ partial class MainForm
     protected override void Dispose(bool disposing)
     {
         if (disposing && (components != null))
+        {
             components.Dispose();
+        }
         base.Dispose(disposing);
     }
 
@@ -41,6 +43,7 @@ partial class MainForm
         listConfigs.Size = new Size(360, 259);
         listConfigs.TabIndex = 1;
         listConfigs.DoubleClick += listConfigs_DoubleClick;
+        listConfigs.MouseDown += listConfigs_MouseDown;
         //
         // btnBrowse
         //

@@ -142,7 +142,7 @@ public partial class GameProfileEditorForm : Form
         }
 
         // Keywords: command words at line start (name, axis, button, trigger, etc.)
-        var lineStartKeywords = new[] { "processNames", "trackers", "name", "axis", "button", "trigger" };
+        var lineStartKeywords = new[] { "processNames", "trackers", "name", "axis", "button", "trigger", "menuModeToggle" };
         foreach (var kw in lineStartKeywords)
         {
             int pos = 0;
@@ -201,7 +201,9 @@ public partial class GameProfileEditorForm : Form
                 if (used[i]) { anyUsed = true; break; }
             }
             if (!anyUsed)
+            {
                 spans.Add((m.Index, m.Length, numberIdx));
+            }
         }
 
         // Apply in order: comment, number, keyword, then STRING last (same as when highlighting worked)
@@ -238,10 +240,14 @@ public partial class GameProfileEditorForm : Form
         txtName.Text = _profile.Name ?? "";
         listProcessNames.Items.Clear();
         if (_profile.ProcessNames != null)
-            foreach (var p in _profile.ProcessNames) listProcessNames.Items.Add(p);
+        {
+            foreach (var p in _profile.ProcessNames) { listProcessNames.Items.Add(p); }
+        }
         listFloorTrackers.Items.Clear();
         if (_profile.Trackers != null)
-            foreach (var t in _profile.Trackers) listFloorTrackers.Items.Add(t);
+        {
+            foreach (var t in _profile.Trackers) { listFloorTrackers.Items.Add(t); }
+        }
 
         dgvAxis.Rows.Clear();
         foreach (var a in _profile.AxisMappings)
@@ -272,7 +278,7 @@ public partial class GameProfileEditorForm : Form
         _profile.AxisMappings.Clear();
         foreach (DataGridViewRow row in dgvAxis.Rows)
         {
-            if (row.IsNewRow || row.Cells[0].Value == null) continue;
+            if (row.IsNewRow || row.Cells[0].Value == null) { continue; }
             _profile.AxisMappings.Add(new AxisMapping
             {
                 Tracker = row.Cells[0].Value?.ToString() ?? "",
@@ -294,7 +300,9 @@ public partial class GameProfileEditorForm : Form
     {
         listButtons.Items.Clear();
         foreach (var m in _buttonMappings)
+        {
             listButtons.Items.Add(Summarize(m.Condition) + " → " + (m.Button ?? ""));
+        }
     }
 
     private void RefreshTriggerList()
@@ -310,7 +318,9 @@ public partial class GameProfileEditorForm : Form
         if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source)) return m.Tracker + "." + m.Source + " → " + (m.Trigger ?? "");
         var s = Summarize(m.Condition) + " → " + (m.Trigger ?? "");
         if (m.ValueWhenTrue != 255 || m.ValueWhenFalse != 0)
+        {
             s += " = " + m.ValueWhenTrue + (m.ValueWhenFalse != 0 ? " / " + m.ValueWhenFalse : "");
+        }
         return s;
     }
 
@@ -332,7 +342,9 @@ public partial class GameProfileEditorForm : Form
         {
             var msg = string.Join(Environment.NewLine, dupWarnings) + Environment.NewLine + Environment.NewLine + "Save anyway?";
             if (MessageBox.Show(msg, "Duplicate mappings", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+            {
                 return;
+            }
         }
         SavedProfile = _profile;
         SavedFileName = _isNew ? (txtFileName.Text?.Trim() ?? "mygame.json") : null;
@@ -372,7 +384,9 @@ public partial class GameProfileEditorForm : Form
     private void btnRemoveAxis_Click(object sender, EventArgs e)
     {
         if (dgvAxis.CurrentRow != null && !dgvAxis.CurrentRow.IsNewRow)
+        {
             dgvAxis.Rows.Remove(dgvAxis.CurrentRow);
+        }
     }
 
     private void btnAddButton_Click(object sender, EventArgs e)
@@ -484,6 +498,7 @@ public partial class GameProfileEditorForm : Form
         _profile.AxisMappings = parsed.AxisMappings;
         _profile.ButtonMappings = parsed.ButtonMappings;
         _profile.TriggerMappings = parsed.TriggerMappings;
+        _profile.MenuModeToggleCondition = parsed.MenuModeToggleCondition;
         LoadProfile();
     }
 }

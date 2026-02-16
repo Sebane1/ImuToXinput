@@ -68,9 +68,13 @@ public sealed class ConditionEditDialog : Form
         Controls.Add(btnCancel);
 
         if (existing != null)
+        {
             LoadCondition(existing);
+        }
         else
+        {
             _cmbType.SelectedIndex = 0;
+        }
 
         RefreshConditionFields();
     }
@@ -173,7 +177,9 @@ public sealed class ConditionEditDialog : Form
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         if (DialogResult == DialogResult.OK)
+        {
             Result = BuildCondition();
+        }
         base.OnFormClosing(e);
     }
 

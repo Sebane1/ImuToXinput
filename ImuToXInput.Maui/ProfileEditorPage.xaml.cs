@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using ImuToXInput.Config;
+using ImuToXInput.Core;
 
 namespace ImuToXInput.Maui;
 

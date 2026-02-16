@@ -14,7 +14,6 @@
             </VerticalStackLayout.Padding>
             <Label Text="Send controller input to Joypad OS over WiFi (JOCP)." FontSize="14" TextColor="#555" />
             <Label x:Name="LblJocpStatus" Text="Not connected" FontSize="14" TextColor="#555" />
-            <!-- Host on its own row so the IP entry has full width and avoids cramped/overlapping text on Android -->
             <VerticalStackLayout Spacing="8">
                 <Label Text="Host (e.g. 192.168.4.1)" FontSize="12" TextColor="#666" />
                 <Entry x:Name="EntryJocpHost" Placeholder="192.168.4.1" Keyboard="Numeric" Text="192.168.4.1"

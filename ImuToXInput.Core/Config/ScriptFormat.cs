@@ -15,12 +15,12 @@ namespace ImuToXInput.Config
                 sb.AppendLine("trackers " + string.Join(", ", profile.Trackers));
             sb.AppendLine();
 
-            sb.AppendLine("// Axis: Tracker.Source [* scale] [invert] -> Axis");
+            sb.AppendLine("// Axis: [−]Tracker.Source [* scale] [invert] -> Axis  (leading − or invert)");
             foreach (var a in profile.AxisMappings)
             {
-                var inv = a.Invert ? " invert" : "";
                 var scale = (a.Scale != 1f || a.Invert) ? $" * {a.Scale:G}" : "";
-                sb.AppendLine($"axis {a.Tracker}.{a.Source}{scale}{inv} -> {a.Axis}");
+                var prefix = a.Invert ? "-" : "";
+                sb.AppendLine($"axis {prefix}{a.Tracker}.{a.Source}{scale} -> {a.Axis}");
             }
             sb.AppendLine();
 
@@ -36,7 +36,7 @@ namespace ImuToXInput.Config
                 if (m.FixedValue.HasValue)
                     sb.AppendLine("trigger " + m.Trigger + " = " + m.FixedValue.Value);
                 else if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source))
-                    sb.AppendLine("trigger " + m.Trigger + " = " + m.Tracker + "." + m.Source + (m.Scale != 1f ? " * " + m.Scale : "") + (m.Invert ? " invert" : ""));
+                    sb.AppendLine("trigger " + m.Trigger + " = " + (m.Invert ? "-" : "") + m.Tracker + "." + m.Source + (m.Scale != 1f ? " * " + m.Scale : ""));
                 else if (m.Condition != null)
                 {
                     var line = "trigger " + FormatCondition("when", m.Condition) + " -> " + m.Trigger;
@@ -188,22 +188,28 @@ namespace ImuToXInput.Config
                                 profile.TriggerMappings.Add(new TriggerMapping { Trigger = trig, FixedValue = fixedVal });
                                 continue;
                             }
-                            // Axis: RHS is "Tracker.Source [* scale] [invert]"
+                            // Axis: RHS is "[−]Tracker.Source [* scale] [invert]"
                             var parts = rhs.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-                            if (parts.Length >= 1 && parts[0].Contains('.'))
+                            if (parts.Length >= 1)
                             {
-                                var dot = parts[0].IndexOf('.');
-                                var tracker = parts[0].Substring(0, dot);
-                                var source = parts[0].Substring(dot + 1);
-                                if (!string.IsNullOrEmpty(tracker) && !string.IsNullOrEmpty(source))
+                                var firstPart = parts[0];
+                                var invertFromMinus = firstPart.StartsWith("-");
+                                if (invertFromMinus) firstPart = firstPart.Substring(1).Trim();
+                                var dot = firstPart.IndexOf('.');
+                                if (dot >= 0)
                                 {
-                                    var axis = new TriggerMapping { Trigger = trig, Tracker = tracker, Source = source, Scale = 1f, Invert = false };
-                                    for (var i = 1; i < parts.Length; i++)
+                                    var tracker = firstPart.Substring(0, dot);
+                                    var source = firstPart.Substring(dot + 1);
+                                    if (!string.IsNullOrEmpty(tracker) && !string.IsNullOrEmpty(source))
                                     {
-                                        if (parts[i].Equals("invert", StringComparison.OrdinalIgnoreCase)) axis.Invert = true;
-                                        else if (parts[i] == "*" && i + 1 < parts.Length && float.TryParse(parts[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float sc)) { axis.Scale = sc; i++; }
+                                        var axis = new TriggerMapping { Trigger = trig, Tracker = tracker, Source = source, Scale = 1f, Invert = invertFromMinus };
+                                        for (var i = 1; i < parts.Length; i++)
+                                        {
+                                            if (parts[i].Equals("invert", StringComparison.OrdinalIgnoreCase)) axis.Invert = true;
+                                            else if (parts[i] == "*" && i + 1 < parts.Length && float.TryParse(parts[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float sc)) { axis.Scale = sc; i++; }
+                                        }
+                                        profile.TriggerMappings.Add(axis);
                                     }
-                                    profile.TriggerMappings.Add(axis);
                                 }
                                 continue;
                             }
@@ -233,8 +239,10 @@ namespace ImuToXInput.Config
             var right = line.Substring(arrow + 2).Trim();
             var left = line.Substring(0, arrow).Trim();
             var axis = right;
-            var invert = left.Contains("invert", StringComparison.OrdinalIgnoreCase);
-            if (invert) left = Regex.Replace(left, @"\binvert\b", "", RegexOptions.IgnoreCase).Trim();
+            var invert = left.StartsWith("-");
+            if (invert) left = left.Substring(1).Trim();
+            invert = invert || left.Contains("invert", StringComparison.OrdinalIgnoreCase);
+            if (left.Contains("invert", StringComparison.OrdinalIgnoreCase)) left = Regex.Replace(left, @"\binvert\b", "", RegexOptions.IgnoreCase).Trim();
             float scale = 1f;
             var star = left.IndexOf('*');
             if (star >= 0)

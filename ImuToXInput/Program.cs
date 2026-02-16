@@ -96,7 +96,9 @@ namespace ImuToXInput
                 trackers = slimeVRClient.Trackers;
                 _loadedConfig = ConfigLoader.Load();
                 if (_loadedConfig == null)
+                {
                     Console.WriteLine("No configs folder found; using built-in game mappings.");
+                }
                 while (true)
                 {
                     UpdateController();

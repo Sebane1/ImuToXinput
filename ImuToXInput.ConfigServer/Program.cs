@@ -23,7 +23,9 @@ var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingP
 app.MapPost("/api/configs", async ([FromBody] UploadRequest req) =>
 {
     if (string.IsNullOrWhiteSpace(req?.GameName) || string.IsNullOrWhiteSpace(req?.ConfigName) || string.IsNullOrWhiteSpace(req?.JsonContent))
+    {
         return Results.BadRequest("GameName, ConfigName and JsonContent are required.");
+    }
     var id = Guid.NewGuid().ToString("N")[..12];
     var entry = new SharedConfigEntry
     {
@@ -54,7 +56,9 @@ app.MapGet("/api/configs", (string? search) =>
                 entry.GameName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                 entry.ConfigName.Contains(search, StringComparison.OrdinalIgnoreCase);
             if (match)
+            {
                 list.Add(entry);
+            }
         }
         catch { /* skip invalid */ }
     }

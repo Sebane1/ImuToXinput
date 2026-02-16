@@ -26,7 +26,6 @@ public partial class TriggerConditionValuesPage : ContentPage
 
     private async void OnCancelClicked(object? sender, EventArgs e)
     {
-        _onComplete = null;
         await Navigation.PopModalAsync();
     }
 }

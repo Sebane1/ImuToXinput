@@ -78,6 +78,12 @@ public partial class MainPage : ContentPage
         LblFolder.Text = "Config folder: " + _configFolderDisplay;
     }
 
+    private void OnProfileSaved()
+    {
+        Services.ControllerLoopService.InvalidateActiveProfileCache();
+        RefreshList();
+    }
+
     private void RefreshList()
     {
         ListConfigs.ItemsSource = null;
@@ -123,7 +129,7 @@ public partial class MainPage : ContentPage
             ButtonMappings = new List<ButtonMapping>(),
             TriggerMappings = new List<TriggerMapping>()
         };
-        await Navigation.PushAsync(new ProfileEditorPage(profile, isNew: true, suggestedFileName: "mygame.json", _configFolder, RefreshList));
+        await Navigation.PushAsync(new ProfileEditorPage(profile, isNew: true, suggestedFileName: "mygame.json", _configFolder, OnProfileSaved));
     }
 
     private async void OnEditClicked(object? sender, EventArgs e)

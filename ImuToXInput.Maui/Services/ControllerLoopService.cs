@@ -20,6 +20,8 @@ public static partial class ControllerLoopService
     private static string _configDirectory = "";
     private static IDispatcherTimer? _timer;
     private static bool _running;
+    private static string? _cachedActiveFileName;
+    private static GameProfile? _cachedActiveProfile;
 
     /// <summary>Start the SlimeVR client and the mapping timer. Call once when the app is ready.</summary>
     public static void Start()
@@ -62,15 +64,27 @@ public static partial class ControllerLoopService
                 if (!string.IsNullOrEmpty(activeFileName))
                 {
                     var path = Path.Combine(_configDirectory, activeFileName);
-                    if (File.Exists(path))
+                    var needsLoad = activeFileName != _cachedActiveFileName || (_cachedActiveProfile == null && File.Exists(path));
+                    if (needsLoad)
                     {
-                        try
+                        _cachedActiveFileName = activeFileName;
+                        _cachedActiveProfile = null;
+                        if (File.Exists(path))
                         {
-                            var json = File.ReadAllText(path);
-                            activeOverride = Newtonsoft.Json.JsonConvert.DeserializeObject<GameProfile>(json);
+                            try
+                            {
+                                var json = File.ReadAllText(path);
+                                _cachedActiveProfile = Newtonsoft.Json.JsonConvert.DeserializeObject<GameProfile>(json);
+                            }
+                            catch { /* keep null */ }
                         }
-                        catch { /* use default/fallback */ }
                     }
+                    activeOverride = _cachedActiveProfile;
+                }
+                else
+                {
+                    _cachedActiveFileName = null;
+                    _cachedActiveProfile = null;
                 }
             }
 
@@ -86,8 +100,16 @@ public static partial class ControllerLoopService
         _timer = null;
         _slimeVRClient = null;
         _loadedConfig = null;
+        _cachedActiveFileName = null;
+        _cachedActiveProfile = null;
         _running = false;
     }
 
     public static bool IsRunning => _running;
+
+    /// <summary>Invalidate the cached active profile so it is reloaded on next tick. Call when the active profile file is saved.</summary>
+    public static void InvalidateActiveProfileCache()
+    {
+        _cachedActiveProfile = null;
+    }
 }

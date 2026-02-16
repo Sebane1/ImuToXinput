@@ -228,7 +228,12 @@ public partial class ProfileEditorPage : ContentPage
             var content = await GetScriptContentAsync();
             if (content != null)
             {
-                var parsed = ScriptFormat.ParseProfile(content);
+                if (!ScriptFormat.TryParseProfile(content, out var parsed, out var parseErrors) || parsed == null)
+                {
+                    var msg = parseErrors != null && parseErrors.Count > 0 ? string.Join("\n", parseErrors) : "Parse failed.";
+                    await DisplayAlert("Script errors", "Script errors:\n\n" + msg + "\n\nFix errors before saving.", "OK");
+                    return;
+                }
                 _profile.Name = TxtName.Text?.Trim() ?? parsed.Name;
                 _profile.ProcessNames = _processNames.Count > 0 ? _processNames.ToList() : parsed.ProcessNames;
                 _profile.Trackers = _trackers.Count > 0 ? _trackers.ToList() : parsed.Trackers;
@@ -238,6 +243,14 @@ public partial class ProfileEditorPage : ContentPage
             }
             else
                 SaveFormToProfile();
+
+            var dupWarnings = ProfileValidation.GetDuplicateMappingWarnings(_profile);
+            if (dupWarnings.Count > 0)
+            {
+                var msg = string.Join("\n", dupWarnings) + "\n\nSave anyway?";
+                var ok = await DisplayAlert("Duplicate mappings", msg, "Save anyway", "Cancel");
+                if (!ok) return;
+            }
 
             var name = _profile.Name?.Trim() ?? "";
             if (string.IsNullOrWhiteSpace(name)) name = "config";
@@ -419,22 +432,20 @@ public partial class ProfileEditorPage : ContentPage
 
     private async void OnApplyScriptClicked(object? sender, EventArgs e)
     {
-        try
+        var content = await GetScriptContentAsync();
+        if (content == null) { await DisplayAlert("Apply script", "Could not read script from editor.", "OK"); return; }
+        if (!ScriptFormat.TryParseProfile(content, out var parsed, out var errors) || parsed == null)
         {
-            var content = await GetScriptContentAsync();
-            if (content == null) { await DisplayAlert("Apply script", "Could not read script from editor.", "OK"); return; }
-            var parsed = ScriptFormat.ParseProfile(content);
-            _profile.Name = parsed.Name;
-            _profile.ProcessNames = parsed.ProcessNames ?? new List<string>();
-            _profile.Trackers = parsed.Trackers;
-            _profile.AxisMappings = parsed.AxisMappings;
-            _profile.ButtonMappings = parsed.ButtonMappings;
-            _profile.TriggerMappings = parsed.TriggerMappings;
-            LoadProfile();
+            var msg = errors != null && errors.Count > 0 ? string.Join("\n", errors) : "Parse failed.";
+            await DisplayAlert("Apply script", "Script errors:\n\n" + msg, "OK");
+            return;
         }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Apply script", "Script parse error: " + ex.Message, "OK");
-        }
+        _profile.Name = parsed.Name;
+        _profile.ProcessNames = parsed.ProcessNames ?? new List<string>();
+        _profile.Trackers = parsed.Trackers;
+        _profile.AxisMappings = parsed.AxisMappings;
+        _profile.ButtonMappings = parsed.ButtonMappings;
+        _profile.TriggerMappings = parsed.TriggerMappings;
+        LoadProfile();
     }
 }

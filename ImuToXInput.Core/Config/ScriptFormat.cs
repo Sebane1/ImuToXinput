@@ -97,7 +97,29 @@ namespace ImuToXInput.Config
             return s.Replace("\\\"", "\"").Replace("\\\\", "\\");
         }
 
+        /// <summary>Try to parse the script. Returns the profile and any parse errors (e.g. unrecognized or malformed lines).</summary>
+        public static bool TryParseProfile(string script, out GameProfile? profile, out List<string> errors)
+        {
+            errors = new List<string>();
+            try
+            {
+                profile = ParseProfile(script, errors);
+                return errors.Count == 0;
+            }
+            catch (Exception ex)
+            {
+                errors.Add(ex.Message);
+                profile = null;
+                return false;
+            }
+        }
+
         public static GameProfile ParseProfile(string script)
+        {
+            return ParseProfile(script, null);
+        }
+
+        private static GameProfile ParseProfile(string script, List<string>? errors)
         {
             var profile = new GameProfile
             {
@@ -144,6 +166,7 @@ namespace ImuToXInput.Config
                     var (cond, btn) = ParseWhenLine(line.Substring(7).Trim(), lineNum);
                     if (cond != null && btn != null)
                         profile.ButtonMappings.Add(new ButtonMapping { Condition = cond, Button = btn });
+                    else errors?.Add($"Line {lineNum}: invalid button syntax (expected: when <expr> -> Button)");
                     continue;
                 }
                 if (line.StartsWith("trigger ", StringComparison.OrdinalIgnoreCase))
@@ -173,6 +196,7 @@ namespace ImuToXInput.Config
                             }
                             profile.TriggerMappings.Add(new TriggerMapping { Condition = cond, Trigger = triggerName, ValueWhenTrue = valTrue, ValueWhenFalse = valFalse });
                         }
+                        else errors?.Add($"Line {lineNum}: invalid trigger when syntax");
                         continue;
                     }
                     // trigger LeftTrigger = 128 (unconditional fixed) or trigger LeftTrigger = Tracker.Source [* scale] [invert]
@@ -181,39 +205,45 @@ namespace ImuToXInput.Config
                     {
                         var trig = rest.Substring(0, eq).Trim();
                         var rhs = rest.Substring(eq + 3).Trim();
+                        var added = false;
                         if (!string.IsNullOrEmpty(trig))
                         {
                             if (byte.TryParse(rhs, out byte fixedVal))
                             {
                                 profile.TriggerMappings.Add(new TriggerMapping { Trigger = trig, FixedValue = fixedVal });
-                                continue;
+                                added = true;
                             }
-                            // Axis: RHS is "[−]Tracker.Source [* scale] [invert]"
-                            var parts = rhs.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-                            if (parts.Length >= 1)
+                            else
                             {
-                                var firstPart = parts[0];
-                                var invertFromMinus = firstPart.StartsWith("-");
-                                if (invertFromMinus) firstPart = firstPart.Substring(1).Trim();
-                                var dot = firstPart.IndexOf('.');
-                                if (dot >= 0)
+                                // Axis: RHS is "[−]Tracker.Source [* scale] [invert]"
+                                var parts = rhs.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+                                if (parts.Length >= 1)
                                 {
-                                    var tracker = firstPart.Substring(0, dot);
-                                    var source = firstPart.Substring(dot + 1);
-                                    if (!string.IsNullOrEmpty(tracker) && !string.IsNullOrEmpty(source))
+                                    var firstPart = parts[0];
+                                    var invertFromMinus = firstPart.StartsWith("-");
+                                    if (invertFromMinus) firstPart = firstPart.Substring(1).Trim();
+                                    var dot = firstPart.IndexOf('.');
+                                    if (dot >= 0)
                                     {
-                                        var axis = new TriggerMapping { Trigger = trig, Tracker = tracker, Source = source, Scale = 1f, Invert = invertFromMinus };
-                                        for (var i = 1; i < parts.Length; i++)
+                                        var tracker = firstPart.Substring(0, dot);
+                                        var source = firstPart.Substring(dot + 1);
+                                        if (!string.IsNullOrEmpty(tracker) && !string.IsNullOrEmpty(source))
                                         {
-                                            if (parts[i].Equals("invert", StringComparison.OrdinalIgnoreCase)) axis.Invert = true;
-                                            else if (parts[i] == "*" && i + 1 < parts.Length && float.TryParse(parts[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float sc)) { axis.Scale = sc; i++; }
+                                            var axis = new TriggerMapping { Trigger = trig, Tracker = tracker, Source = source, Scale = 1f, Invert = invertFromMinus };
+                                            for (var i = 1; i < parts.Length; i++)
+                                            {
+                                                if (parts[i].Equals("invert", StringComparison.OrdinalIgnoreCase)) axis.Invert = true;
+                                                else if (parts[i] == "*" && i + 1 < parts.Length && float.TryParse(parts[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float sc)) { axis.Scale = sc; i++; }
+                                            }
+                                            profile.TriggerMappings.Add(axis);
+                                            added = true;
                                         }
-                                        profile.TriggerMappings.Add(axis);
                                     }
                                 }
-                                continue;
                             }
                         }
+                        if (!added && !string.IsNullOrEmpty(trig))
+                            errors?.Add($"Line {lineNum}: invalid trigger syntax (expected: Trigger = 0-255 or Trigger = Tracker.Source)");
                     }
                 }
             }

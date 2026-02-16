@@ -327,6 +327,13 @@ public partial class GameProfileEditorForm : Form
     private void btnSave_Click(object sender, EventArgs e)
     {
         SaveToProfile();
+        var dupWarnings = ProfileValidation.GetDuplicateMappingWarnings(_profile);
+        if (dupWarnings.Count > 0)
+        {
+            var msg = string.Join(Environment.NewLine, dupWarnings) + Environment.NewLine + Environment.NewLine + "Save anyway?";
+            if (MessageBox.Show(msg, "Duplicate mappings", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
+        }
         SavedProfile = _profile;
         SavedFileName = _isNew ? (txtFileName.Text?.Trim() ?? "mygame.json") : null;
         DialogResult = DialogResult.OK;
@@ -465,20 +472,18 @@ public partial class GameProfileEditorForm : Form
 
     private void btnApplyScript_Click(object sender, EventArgs e)
     {
-        try
+        if (!ScriptFormat.TryParseProfile(txtScript.Text, out var parsed, out var errors) || parsed == null)
         {
-            var parsed = ScriptFormat.ParseProfile(txtScript.Text);
-            _profile.Name = parsed.Name;
-            _profile.ProcessNames = parsed.ProcessNames ?? new List<string>();
-            _profile.Trackers = parsed.Trackers;
-            _profile.AxisMappings = parsed.AxisMappings;
-            _profile.ButtonMappings = parsed.ButtonMappings;
-            _profile.TriggerMappings = parsed.TriggerMappings;
-            LoadProfile();
+            var msg = errors != null && errors.Count > 0 ? string.Join(Environment.NewLine, errors) : "Parse failed.";
+            MessageBox.Show("Script errors:" + Environment.NewLine + Environment.NewLine + msg, "Apply script", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
         }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Script parse error: " + ex.Message, "Apply script", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
+        _profile.Name = parsed.Name;
+        _profile.ProcessNames = parsed.ProcessNames ?? new List<string>();
+        _profile.Trackers = parsed.Trackers;
+        _profile.AxisMappings = parsed.AxisMappings;
+        _profile.ButtonMappings = parsed.ButtonMappings;
+        _profile.TriggerMappings = parsed.TriggerMappings;
+        LoadProfile();
     }
 }

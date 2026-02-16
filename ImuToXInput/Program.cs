@@ -114,7 +114,7 @@ namespace ImuToXInput
 
         static string? DetectGameProcess()
         {
-            // Add the executable names (without .exe) of games you want to detect
+            // Executable names (without .exe) of games to detect.
             string[] supportedGames = { "MirrorsEdge", "stepmania", "ffxiv_dx11", "portal", "portal2" };
 
             foreach (var game in supportedGames)

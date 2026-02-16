@@ -22,7 +22,9 @@ public static class JocpPacket
     public static byte[] BuildFromXbox360Report(ReadOnlySpan<byte> report12, ushort sequence = 0, uint timestampMs = 0)
     {
         if (report12.Length < 12)
+        {
             return new byte[PacketSize];
+        }
 
         var packet = new byte[PacketSize];
 

@@ -35,6 +35,12 @@ namespace ImuToXInput.Config
         /// </summary>
         [JsonProperty("trackers")]
         public List<string>? Trackers { get; set; }
+
+        /// <summary>
+        /// When this condition becomes true (rising edge), menu mode is toggled. Does not send any input to the controller.
+        /// </summary>
+        [JsonProperty("menuModeToggle")]
+        public MappingCondition? MenuModeToggleCondition { get; set; }
     }
 
     /// <summary>

@@ -46,24 +46,34 @@ public sealed class GamepadReportState
             _ => 0
         };
         if (pressed)
+        {
             Buttons |= bit;
+        }
         else
+        {
             Buttons = (ushort)(Buttons & ~bit);
+        }
     }
 
     public void SetTrigger(GamepadTrigger trigger, byte value)
     {
         if (trigger == GamepadTrigger.LeftTrigger)
+        {
             TriggerLeft = value;
+        }
         else
+        {
             TriggerRight = value;
+        }
     }
 
     /// <summary>Writes the 12-byte report (little-endian) to the buffer. Returns ReportSize.</summary>
     public int WriteTo(Span<byte> buffer)
     {
         if (buffer.Length < ReportSize)
+        {
             return 0;
+        }
         WriteLittleEndian(buffer, 0, AxisLeftX);
         WriteLittleEndian(buffer, 2, AxisLeftY);
         WriteLittleEndian(buffer, 4, AxisRightX);

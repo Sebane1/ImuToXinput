@@ -18,35 +18,54 @@ public static class ControllerMappingRunner
     /// <param name="loadedConfig">Loaded configs; can be null.</param>
     /// <param name="getProcessName">Returns current game process name (desktop); MAUI can pass () => null.</param>
     /// <param name="activeProfileOverride">When set (e.g. MAUI active profile), use this profile and ignore process detection.</param>
+    /// <param name="menuMode">When true, thumbsticks snap to neutral after a hold period until user returns to deadzone.</param>
+    /// <param name="menuModeState">State for menu mode; must be non-null when menuMode is true and using a profile.</param>
+    /// <param name="onMenuModeToggleRequested">When the profile's menuModeToggle condition fires (rising edge), this is invoked. Does not send controller input.</param>
+    /// <param name="menuModeToggleState">State for edge-detecting the menu mode toggle; pass non-null when using onMenuModeToggleRequested.</param>
     public static void Update(
         Dictionary<string, TrackerState> trackers,
         IGamepadOutput output,
         LoadedConfig? loadedConfig,
         Func<string?> getProcessName,
-        GameProfile? activeProfileOverride)
+        GameProfile? activeProfileOverride,
+        bool menuMode = false,
+        ThumbstickMenuModeState? menuModeState = null,
+        Action? onMenuModeToggleRequested = null,
+        MenuModeToggleState? menuModeToggleState = null)
     {
+        string? runningGame = getProcessName();
+        GameProfile? profileToApply = null;
         if (activeProfileOverride != null)
         {
-            ConfigApplier.Apply(activeProfileOverride, trackers, output);
-            return;
+            profileToApply = activeProfileOverride;
         }
 
-        string? runningGame = getProcessName();
-
-        if (string.Equals(runningGame, "stepmania", StringComparison.OrdinalIgnoreCase))
+        if (profileToApply == null)
         {
-            StepMania(trackers, output);
-            return;
-        }
-
-        if (loadedConfig != null)
-        {
-            var profile = ConfigLoader.GetProfileForProcess(loadedConfig, runningGame);
-            if (profile != null)
+            if (string.Equals(runningGame, "stepmania", StringComparison.OrdinalIgnoreCase))
             {
-                ConfigApplier.Apply(profile, trackers, output);
+                StepMania(trackers, output);
                 return;
             }
+            if (loadedConfig != null)
+            {
+                profileToApply = ConfigLoader.GetProfileForProcess(loadedConfig, runningGame);
+            }
+        }
+
+        if (profileToApply != null)
+        {
+            if (profileToApply.MenuModeToggleCondition != null && menuModeToggleState != null && onMenuModeToggleRequested != null)
+            {
+                bool current = ConfigApplier.EvaluateCondition(profileToApply.MenuModeToggleCondition, trackers);
+                if (current && !menuModeToggleState.LastConditionValue)
+                {
+                    onMenuModeToggleRequested();
+                }
+                menuModeToggleState.LastConditionValue = current;
+            }
+            ConfigApplier.Apply(profileToApply, trackers, output, menuMode: menuMode, menuModeState: menuModeState);
+            return;
         }
 
         switch (runningGame)
@@ -120,13 +139,17 @@ public static class ControllerMappingRunner
         float z = ankle.CalibratedPosition.Z;
 
         if (Math.Abs(x) < deadZone && Math.Abs(z) < deadZone)
+        {
             return (false, false, false, false, false, false, false, false);
+        }
 
         var dir = new Vector2(x, z);
         float mag = dir.Length();
 
         if (mag < deadZone)
+        {
             return (false, false, false, false, false, false, false, false);
+        }
 
         dir /= mag;
 
@@ -141,8 +164,8 @@ public static class ControllerMappingRunner
             }
             if (Math.Abs(dir.Y) > Math.Abs(dir.X))
             {
-                if (dir.Y < -cardThreshold) return (false, true, false, false, false, false, false, false);
-                if (dir.Y > cardThreshold) return (true, false, false, false, false, false, false, false);
+                if (dir.Y < -cardThreshold) { return (false, true, false, false, false, false, false, false); }
+                if (dir.Y > cardThreshold) { return (true, false, false, false, false, false, false, false); }
             }
             else
             {
@@ -158,8 +181,10 @@ public static class ControllerMappingRunner
         TrackerState? leftAnkle = null, rightAnkle = null;
         bool hasFeet = (trackers.TryGetValue("LEFT_FOOT", out leftAnkle) && trackers.TryGetValue("RIGHT_FOOT", out rightAnkle))
             || (trackers.TryGetValue("LEFT_LOWER_LEG", out leftAnkle) && trackers.TryGetValue("RIGHT_LOWER_LEG", out rightAnkle));
-        if (!hasFeet || leftAnkle == null || rightAnkle == null || !trackers.TryGetValue("HEAD", out _))
+        if (!hasFeet || leftAnkle == null || rightAnkle == null)
+        {
             return;
+        }
 
         TrackingEnvironment.UpdateFloor(leftAnkle, rightAnkle);
 
@@ -240,7 +265,9 @@ public static class ControllerMappingRunner
             output.SetTrigger(GamepadTrigger.RightTrigger, (byte)(rightHand.Euler.Y + chest.Euler.Y < -15f ? 255 : 0));
         }
         if (chest != null && trackers.TryGetValue("LEFT_UPPER_ARM", out var leftHand))
+        {
             output.SetTrigger(GamepadTrigger.LeftTrigger, (byte)(leftHand.Euler.Y - chest.Euler.Y < -20f ? 255 : 0));
+        }
 
         if (trackers.TryGetValue("LEFT_FOOT", out var leftFoot))
         {
@@ -266,12 +293,18 @@ public static class ControllerMappingRunner
 
         TrackerState? leftFoot = null, rightFoot = null;
         if (trackers.TryGetValue("LEFT_FOOT", out leftFoot))
+        {
             output.SetTrigger(GamepadTrigger.LeftTrigger, (byte)(leftFoot.Euler.Y > 15f ? 255 : 0));
+        }
         if (trackers.TryGetValue("RIGHT_FOOT", out rightFoot))
+        {
             output.SetTrigger(GamepadTrigger.RightTrigger, (byte)(rightFoot.Euler.Y < -15f ? 255 : 0));
+        }
 
         if (leftFoot != null && rightFoot != null)
+        {
             TrackingEnvironment.UpdateFloor(leftFoot, rightFoot);
+        }
 
         if (trackers.TryGetValue("RIGHT_LOWER_ARM", out var rightHand))
         {

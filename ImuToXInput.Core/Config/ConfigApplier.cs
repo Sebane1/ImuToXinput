@@ -15,7 +15,10 @@ namespace ImuToXInput.Config
             GameProfile profile,
             Dictionary<string, TrackerState> trackers,
             IGamepadOutput output,
-            float axisDeadzone = DefaultDeadzone)
+            float axisDeadzone = DefaultDeadzone,
+            bool menuMode = false,
+            ThumbstickMenuModeState? menuModeState = null,
+            float menuModeHoldMs = ThumbstickMenuModeState.DefaultHoldDurationMs)
         {
             if (profile.Trackers != null && profile.Trackers.Count > 0)
             {
@@ -27,22 +30,56 @@ namespace ImuToXInput.Config
                     .Cast<TrackerState>()
                     .ToArray();
                 if (floorTrackers.Length > 0)
+                {
                     TrackingEnvironment.UpdateFloor(floorTrackers);
+                }
             }
 
+            // Build raw values per thumbstick axis (from profile mappings; 0 if unmapped)
+            var rawByAxis = new Dictionary<GamepadAxis, float>
+            {
+                { GamepadAxis.LeftThumbX, 0 }, { GamepadAxis.LeftThumbY, 0 },
+                { GamepadAxis.RightThumbX, 0 }, { GamepadAxis.RightThumbY, 0 }
+            };
             foreach (var m in profile.AxisMappings)
             {
                 if (!trackers.TryGetValue(m.Tracker, out var t)) continue;
-                float raw = GetAxisSourceValue(t, m.Source) * m.Scale * (m.Invert ? -1f : 1f);
                 if (!TryParseAxis(m.Axis, out var axis)) continue;
-                output.SetAxis(axis, ApplyDeadzone(raw, axisDeadzone));
+                float raw = GetAxisSourceValue(t, m.Source) * m.Scale * (m.Invert ? -1f : 1f);
+                rawByAxis[axis] = raw;
             }
+
+            // Apply deadzone
+            var outByAxis = new Dictionary<GamepadAxis, short>();
+            foreach (var kv in rawByAxis)
+                outByAxis[kv.Key] = ApplyDeadzone(kv.Value, axisDeadzone);
+
+            // Menu mode: per-stick lock after hold duration, unlock when raw in deadzone
+            if (menuMode && menuModeState != null)
+            {
+                var now = DateTime.UtcNow;
+                bool leftLocked = menuModeState.LeftLocked;
+                DateTime? leftNonZero = menuModeState.LeftNonZeroSinceUtc;
+                ApplyMenuModeStick(GamepadAxis.LeftThumbX, GamepadAxis.LeftThumbY, rawByAxis, outByAxis, axisDeadzone, menuModeHoldMs, now, ref leftLocked, ref leftNonZero);
+                menuModeState.LeftLocked = leftLocked;
+                menuModeState.LeftNonZeroSinceUtc = leftNonZero;
+                bool rightLocked = menuModeState.RightLocked;
+                DateTime? rightNonZero = menuModeState.RightNonZeroSinceUtc;
+                ApplyMenuModeStick(GamepadAxis.RightThumbX, GamepadAxis.RightThumbY, rawByAxis, outByAxis, axisDeadzone, menuModeHoldMs, now, ref rightLocked, ref rightNonZero);
+                menuModeState.RightLocked = rightLocked;
+                menuModeState.RightNonZeroSinceUtc = rightNonZero;
+            }
+
+            foreach (var kv in outByAxis)
+                output.SetAxis(kv.Key, kv.Value);
 
             foreach (var m in profile.ButtonMappings)
             {
                 bool value = EvaluateCondition(m.Condition, trackers);
                 if (TryParseButton(m.Button, out var button))
+                {
                     output.SetButton(button, value);
+                }
             }
 
             ApplyTriggerMappings(profile, trackers, output, axisDeadzone);
@@ -70,7 +107,9 @@ namespace ImuToXInput.Config
 
                 byte value;
                 if (m.FixedValue.HasValue)
+                {
                     value = m.FixedValue.Value;
+                }
                 else if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source) && trackers.TryGetValue(m.Tracker, out var triggerTracker))
                 {
                     float raw = GetAxisSourceValue(triggerTracker, m.Source) * m.Scale * (m.Invert ? -1f : 1f);
@@ -85,11 +124,67 @@ namespace ImuToXInput.Config
                     continue;
 
                 if (value > triggerValues[trigger])
+                {
                     triggerValues[trigger] = value;
+                }
             }
 
             foreach (var kv in triggerValues)
                 output.SetTrigger(kv.Key, kv.Value);
+        }
+
+        private static float NormalizedRaw(float raw)
+        {
+            return Math.Clamp(raw / 15f, -1f, 1f);
+        }
+
+        private static void ApplyMenuModeStick(
+            GamepadAxis axisX, GamepadAxis axisY,
+            Dictionary<GamepadAxis, float> rawByAxis,
+            Dictionary<GamepadAxis, short> outByAxis,
+            float deadzone, float holdMs, DateTime nowUtc,
+            ref bool locked, ref DateTime? nonZeroSinceUtc)
+        {
+            float rawX = rawByAxis.TryGetValue(axisX, out var rx) ? rx : 0;
+            float rawY = rawByAxis.TryGetValue(axisY, out var ry) ? ry : 0;
+            float nX = NormalizedRaw(rawX);
+            float nY = NormalizedRaw(rawY);
+            bool inDeadzone = Math.Abs(nX) < deadzone && Math.Abs(nY) < deadzone;
+            short outX = outByAxis[axisX];
+            short outY = outByAxis[axisY];
+            bool outputNonZero = outX != 0 || outY != 0;
+
+            if (locked)
+            {
+                if (inDeadzone)
+                {
+                    locked = false;
+                }
+                else
+                {
+                    outByAxis[axisX] = 0;
+                    outByAxis[axisY] = 0;
+                }
+                return;
+            }
+            if (outputNonZero)
+            {
+                if (nonZeroSinceUtc == null)
+                {
+                    nonZeroSinceUtc = nowUtc;
+                }
+                if (nonZeroSinceUtc != null && (nowUtc - nonZeroSinceUtc.Value).TotalMilliseconds >= holdMs)
+                {
+                    locked = true;
+                    nonZeroSinceUtc = null;
+                    outByAxis[axisX] = 0;
+                    outByAxis[axisY] = 0;
+                }
+            }
+            else
+            {
+                nonZeroSinceUtc = null;
+            }
         }
 
         public static short ApplyDeadzone(float value, float deadzone = DefaultDeadzone)
@@ -182,7 +277,9 @@ namespace ImuToXInput.Config
 
                 case EulerSumCondition c:
                     if (!trackers.TryGetValue(c.TrackerA, out var sa) || !trackers.TryGetValue(c.TrackerB, out var sb))
+                    {
                         return false;
+                    }
                     float sum = GetEulerComponent(sa, c.Component) + GetEulerComponent(sb, c.Component);
                     return EvalOp(sum, c.Op, c.Value);
 

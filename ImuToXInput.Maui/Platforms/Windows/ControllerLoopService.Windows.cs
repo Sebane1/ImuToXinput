@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using ImuToXInput.Config;
 using ImuToXInput.Core.Output;
 using ImuToXInput.Maui.Platforms.Windows;
 using Nefarius.ViGEm.Client;
@@ -12,6 +14,18 @@ public static partial class ControllerLoopService
 
     static ControllerLoopService()
     {
+        GetProcessName = config =>
+        {
+            if (config == null) return null;
+            foreach (var name in ConfigLoader.GetAllProcessNames(config))
+            {
+                if (Process.GetProcessesByName(name).Length > 0)
+                {
+                    return name;
+                }
+            }
+            return null;
+        };
         GetOutput = () =>
         {
             if (_windowsOutput != null)

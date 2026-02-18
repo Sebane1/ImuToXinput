@@ -84,8 +84,17 @@ namespace ImuToXInput.Config
         /// <summary>Get the profile to use for the running process. Uses primary profile preference when multiple match.</summary>
         public static GameProfile? GetProfileForProcess(LoadedConfig? config, string? processName)
         {
+            var (profile, _) = GetProfileAndFileNameForProcess(config, processName);
+            return profile;
+        }
+
+        /// <summary>Get the profile and its file name for the running process. File name is null when using legacy game mode.</summary>
+        public static (GameProfile? profile, string? fileName) GetProfileAndFileNameForProcess(LoadedConfig? config, string? processName)
+        {
             if (config == null)
-                return null;
+            {
+                return (null, null);
+            }
 
             if (!string.IsNullOrEmpty(processName))
             {
@@ -96,27 +105,56 @@ namespace ImuToXInput.Config
                     .ToList();
                 if (matching.Count > 0)
                 {
-                    if (matching.Count == 1)
-                    {
-                        return matching[0].Profile;
-                    }
                     var primary = string.IsNullOrEmpty(config.ConfigDirectory)
                         ? null
                         : PrimaryProfilesPreferences.GetPrimaryProfile(config.ConfigDirectory, processName);
-                    if (!string.IsNullOrEmpty(primary))
+                    var chosen = matching.Count == 1
+                        ? matching[0]
+                        : matching.FirstOrDefault(m => string.Equals(m.FileName, primary, StringComparison.OrdinalIgnoreCase));
+                    if (chosen.Profile == null)
                     {
-                        var chosen = matching.FirstOrDefault(m =>
-                            string.Equals(m.FileName, primary, StringComparison.OrdinalIgnoreCase));
-                        if (chosen.Profile != null)
-                        {
-                            return chosen.Profile;
-                        }
+                        chosen = matching[0];
                     }
-                    return matching[0].Profile;
+                    return (chosen.Profile, chosen.FileName);
                 }
             }
 
-            return config.DefaultProfile;
+            return (config.DefaultProfile, config.DefaultProfile != null ? DefaultConfigFileName : null);
+        }
+
+        /// <summary>All process names referenced by any profile (for process detection). Includes "stepmania" for legacy mode.</summary>
+        public static IEnumerable<string> GetAllProcessNames(LoadedConfig? config)
+        {
+            if (config == null)
+            {
+                yield break;
+            }
+            yield return "stepmania";
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (config.DefaultProfile?.ProcessNames != null)
+            {
+                foreach (var n in config.DefaultProfile.ProcessNames)
+                {
+                    if (!string.IsNullOrEmpty(n) && seen.Add(n))
+                    {
+                        yield return n;
+                    }
+                }
+            }
+            foreach (var p in config.Profiles)
+            {
+                if (p.ProcessNames == null)
+                {
+                    continue;
+                }
+                foreach (var n in p.ProcessNames)
+                {
+                    if (!string.IsNullOrEmpty(n) && seen.Add(n))
+                    {
+                        yield return n;
+                    }
+                }
+            }
         }
     }
 }

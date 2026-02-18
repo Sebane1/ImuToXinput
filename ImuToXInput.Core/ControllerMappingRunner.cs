@@ -10,6 +10,26 @@ namespace ImuToXInput.Config;
 /// </summary>
 public static class ControllerMappingRunner
 {
+    private static readonly object StepManiaMarker = new();
+    private static object? _lastAppliedKey;
+
+    private static void ClearAllInputsIfProfileSwitched(object? newKey, IGamepadOutput output)
+    {
+        if (ReferenceEquals(_lastAppliedKey, newKey)) return;
+        _lastAppliedKey = newKey;
+        ClearAllInputs(output);
+    }
+
+    private static void ClearAllInputs(IGamepadOutput output)
+    {
+        foreach (GamepadAxis axis in Enum.GetValues<GamepadAxis>())
+            output.SetAxis(axis, 0);
+        foreach (GamepadButton button in Enum.GetValues<GamepadButton>())
+            output.SetButton(button, false);
+        foreach (GamepadTrigger trigger in Enum.GetValues<GamepadTrigger>())
+            output.SetTrigger(trigger, 0);
+    }
+
     /// <summary>
     /// Run one update: apply active profile override, or resolve profile by process name, or use legacy game mode.
     /// </summary>
@@ -44,6 +64,7 @@ public static class ControllerMappingRunner
         {
             if (string.Equals(runningGame, "stepmania", StringComparison.OrdinalIgnoreCase))
             {
+                ClearAllInputsIfProfileSwitched(StepManiaMarker, output);
                 StepMania(trackers, output);
                 return;
             }
@@ -55,6 +76,7 @@ public static class ControllerMappingRunner
 
         if (profileToApply != null)
         {
+            ClearAllInputsIfProfileSwitched(profileToApply, output);
             if (profileToApply.MenuModeToggleCondition != null && menuModeToggleState != null && onMenuModeToggleRequested != null)
             {
                 bool current = ConfigApplier.EvaluateCondition(profileToApply.MenuModeToggleCondition, trackers);
@@ -68,22 +90,24 @@ public static class ControllerMappingRunner
             return;
         }
 
-        switch (runningGame)
-        {
-            case "MirrorsEdge":
-                MirrorsEdge(trackers, output);
-                break;
-            case "ffxiv_dx11":
-                FFXIV(trackers, output);
-                break;
-            case "portal":
-            case "portal2":
-                Portal(trackers, output);
-                break;
-            default:
-                FPS(trackers, output);
-                break;
-        }
+        ClearAllInputsIfProfileSwitched(null, output);
+
+        //switch (runningGame)
+        //{
+        //    case "MirrorsEdge":
+        //        MirrorsEdge(trackers, output);
+        //        break;
+        //    case "ffxiv_dx11":
+        //        FFXIV(trackers, output);
+        //        break;
+        //    case "portal":
+        //    case "portal2":
+        //        Portal(trackers, output);
+        //        break;
+        //    default:
+        //        FPS(trackers, output);
+        //        break;
+        //}
     }
 
     private static short ApplyDeadzone(float value, float deadzone = 0.2f)
@@ -239,9 +263,13 @@ public static class ControllerMappingRunner
             output.SetTrigger(GamepadTrigger.LeftTrigger, (byte)(leftHand.Euler.Z - chest.Euler.Z < -30f ? 255 : 0));
         }
         if (trackers.TryGetValue("LEFT_FOOT", out var leftFoot))
+        {
             output.SetButton(GamepadButton.LeftShoulder, leftFoot.Euler.X < -20);
+        }
         if (trackers.TryGetValue("RIGHT_FOOT", out var rightFoot))
+        {
             output.SetButton(GamepadButton.RightShoulder, rightFoot.Euler.X < -20);
+        }
     }
 
     private static void FPS(Dictionary<string, TrackerState> trackers, IGamepadOutput output)

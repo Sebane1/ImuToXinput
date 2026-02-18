@@ -9,6 +9,10 @@ namespace ImuToXInput.Config
 
         public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
+            if (reader.TokenType == JsonToken.Null)
+            {
+                return null;
+            }
             var jo = JObject.Load(reader);
             var type = jo["type"]?.ToString() ?? "";
 

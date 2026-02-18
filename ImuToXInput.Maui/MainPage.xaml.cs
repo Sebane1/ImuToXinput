@@ -7,6 +7,7 @@ public partial class MainPage : ContentPage
 {
     private string _configFolder = "";
     private string _configFolderDisplay = "";
+    private IDispatcherTimer? _profileInUseTimer;
 
     public const string ActiveProfilePreferenceKey = "ActiveProfileFileName";
     /// <summary>When set to "stepmania", mapping uses dance pad / StepMania mode instead of profile or FPS.</summary>
@@ -29,15 +30,81 @@ public partial class MainPage : ContentPage
         BorderActiveProfile.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
         BorderDancePad.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
         BorderMenuMode.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
+        BorderProfileInUse.IsVisible = DeviceInfo.Platform == DevicePlatform.WinUI;
         RefreshActiveProfileLabel();
         RefreshDancePadSwitch();
         RefreshMenuModeSwitch();
+        RefreshProfileInUseLabel();
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
         RefreshMenuModeSwitch(); // Update when returning (e.g. after gesture toggles menu mode)
+        if (BorderProfileInUse.IsVisible)
+        {
+            _profileInUseTimer = Dispatcher.CreateTimer();
+            _profileInUseTimer.Interval = TimeSpan.FromMilliseconds(500);
+            _profileInUseTimer.Tick += (_, _) => RefreshProfileInUseLabel();
+            _profileInUseTimer.Start();
+            RefreshProfileInUseLabel();
+        }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _profileInUseTimer?.Stop();
+        _profileInUseTimer = null;
+    }
+
+    private void RefreshProfileInUseLabel()
+    {
+        if (!BorderProfileInUse.IsVisible || LblProfileInUse == null) return;
+        if (!Services.ControllerLoopService.IsRunning)
+        {
+            LblProfileInUse.Text = "—";
+            if (LblProfileInUseDetail != null)
+            {
+                LblProfileInUseDetail.Text = "Mapping not running.";
+            }
+            return;
+        }
+        if (Services.ControllerLoopService.CurrentIsStepMania)
+        {
+            LblProfileInUse.Text = "StepMania (dance pad)";
+            if (LblProfileInUseDetail != null)
+            {
+                LblProfileInUseDetail.Text = "Feet map to pad arrows and corners.";
+            }
+            return;
+        }
+        var fileName = Services.ControllerLoopService.CurrentProfileFileName;
+        if (string.IsNullOrEmpty(fileName))
+        {
+            LblProfileInUse.Text = "None";
+            if (LblProfileInUseDetail != null)
+            {
+                LblProfileInUseDetail.Text = "No profile or default loaded.";
+            }
+            return;
+        }
+        LblProfileInUse.Text = fileName;
+        if (LblProfileInUseDetail != null)
+        {
+            if (Services.ControllerLoopService.CurrentIsOverride)
+            {
+                LblProfileInUseDetail.Text = "Active profile (used when no game is detected).";
+            }
+            else if (!string.IsNullOrEmpty(Services.ControllerLoopService.CurrentProcessName))
+            {
+                LblProfileInUseDetail.Text = $"Auto-loaded for process: {Services.ControllerLoopService.CurrentProcessName}";
+            }
+            else
+            {
+                LblProfileInUseDetail.Text = "Default profile (no matching game running).";
+            }
+        }
     }
 
     private void RefreshActiveProfileLabel()
@@ -104,6 +171,7 @@ public partial class MainPage : ContentPage
     private void OnProfileSaved()
     {
         Services.ControllerLoopService.InvalidateActiveProfileCache();
+        Services.ControllerLoopService.ReloadConfig();
         RefreshList();
     }
 
@@ -182,7 +250,7 @@ public partial class MainPage : ContentPage
                 await DisplayAlert("Error", "Failed to parse config.", "OK");
                 return;
             }
-            await Navigation.PushAsync(new ProfileEditorPage(profile, isNew: false, suggestedFileName: selected, _configFolder, RefreshList));
+            await Navigation.PushAsync(new ProfileEditorPage(profile, isNew: false, suggestedFileName: selected, _configFolder, OnProfileSaved));
         }
         catch (Exception ex)
         {

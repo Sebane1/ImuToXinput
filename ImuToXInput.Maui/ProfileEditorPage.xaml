@@ -67,9 +67,9 @@
             </Grid>
             <CollectionView x:Name="ListTriggers" HeightRequest="100" SelectionMode="Single" />
 
-            <!-- Menu mode toggle: gesture toggles menu mode (no controller output) -->
+            <!-- Menu mode toggle: gesture toggles menu mode -->
             <VerticalStackLayout Spacing="8">
-                <Label Text="Menu mode toggle (gesture toggles menu mode; no controller output)" FontAttributes="Bold" FontSize="18" />
+                <Label Text="Menu mode toggle (gesture toggles menu mode allowing for easier navigation)" FontAttributes="Bold" FontSize="18" />
                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                     <Label x:Name="LblMenuModeToggle" Text="Not set" VerticalOptions="Center" LineBreakMode="TailTruncation" />
                     <Button x:Name="BtnSetMenuModeToggle" Text="Set gesture" Grid.Column="1" Clicked="OnSetMenuModeToggleClicked" Style="{StaticResource CompactButton}" />

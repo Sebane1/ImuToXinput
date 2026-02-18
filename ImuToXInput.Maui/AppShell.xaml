@@ -6,4 +6,5 @@
        Title="ImuToXInput">
     <ShellContent Title="Profiles" ContentTemplate="{DataTemplate local:MainPage}" Route="MainPage" />
     <ShellContent Title="Shared configs" ContentTemplate="{DataTemplate local:SharedConfigsPage}" Route="SharedConfigs" />
+    <ShellContent Title="Tracker angles" ContentTemplate="{DataTemplate local:TrackerDebugPage}" Route="TrackerAngles" />
 </Shell>

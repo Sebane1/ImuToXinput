@@ -102,7 +102,7 @@ namespace ImuToXInput
                 while (true)
                 {
                     UpdateController();
-                    Thread.Sleep(8);
+                    Thread.Sleep(1);
                 }
             }
         }

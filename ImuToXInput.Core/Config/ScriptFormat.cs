@@ -19,7 +19,7 @@ namespace ImuToXInput.Config
             }
             sb.AppendLine();
 
-            sb.AppendLine("// Axis: [−]Tracker.Source [* scale] [invert] -> Axis  (leading − or invert)");
+            sb.AppendLine("// Axis: [−]Tracker.Source [* scale | / divisor] [invert] -> Axis  (leading − or invert)");
             foreach (var a in profile.AxisMappings)
             {
                 var scale = (a.Scale != 1f || a.Invert) ? $" * {a.Scale:G}" : "";
@@ -28,7 +28,7 @@ namespace ImuToXInput.Config
             }
             sb.AppendLine();
 
-            sb.AppendLine("// Button: when <expr> -> Button  (e.g. Tracker.Euler.X < 20  or  A.Euler.Y - B.Euler.Y > 30  or  Tracker.FloorRelY > 0.1)");
+            sb.AppendLine("// Button: when <expr> -> Button  (e.g. Tracker.EulerX < 20  or  A.EulerY - B.EulerY > 30  or  Tracker.FloorRelY > 0.1)");
             foreach (var m in profile.ButtonMappings)
             {
                 sb.AppendLine("button " + FormatCondition("when", m.Condition) + " -> " + m.Button);
@@ -50,10 +50,7 @@ namespace ImuToXInput.Config
                 else if (m.Condition != null)
                 {
                     var line = "trigger " + FormatCondition("when", m.Condition) + " -> " + m.Trigger;
-                    if (m.ValueWhenTrue != 255 || m.ValueWhenFalse != 0)
-                    {
-                        line += " = " + m.ValueWhenTrue + (m.ValueWhenFalse != 0 ? " / " + m.ValueWhenFalse : "");
-                    }
+                    line += " = " + m.ValueWhenTrue + (m.ValueWhenFalse != 0 ? " / " + m.ValueWhenFalse : "");
                     sb.AppendLine(line);
                 }
                 else
@@ -75,15 +72,15 @@ namespace ImuToXInput.Config
             var opStr = OpToSymbol(GetConditionOp(c));
             if (c is EulerThresholdCondition e)
             {
-                return $"{prefix} {e.Tracker}.Euler.{e.Component} {opStr} {e.Value}";
+                return $"{prefix} {e.Tracker}.Euler{e.Component} {opStr} {e.Value}";
             }
             if (c is EulerDiffCondition d)
             {
-                return $"{prefix} {d.TrackerA}.Euler.{d.Component} - {d.TrackerB}.Euler.{d.Component} {opStr} {d.Value}";
+                return $"{prefix} {d.TrackerA}.Euler{d.Component} - {d.TrackerB}.Euler{d.Component} {opStr} {d.Value}";
             }
             if (c is EulerSumCondition s)
             {
-                return $"{prefix} {s.TrackerA}.Euler.{s.Component} + {s.TrackerB}.Euler.{s.Component} {opStr} {s.Value}";
+                return $"{prefix} {s.TrackerA}.Euler{s.Component} + {s.TrackerB}.Euler{s.Component} {opStr} {s.Value}";
             }
             if (c is PositionThresholdCondition p)
             {
@@ -273,6 +270,11 @@ namespace ImuToXInput.Config
                                                     axis.Scale = sc;
                                                     i++;
                                                 }
+                                                else if (parts[i] == "/" && i + 1 < parts.Length && float.TryParse(parts[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float div) && div != 0)
+                                                {
+                                                    axis.Scale *= 1f / div;
+                                                    i++;
+                                                }
                                             }
                                             profile.TriggerMappings.Add(axis);
                                             added = true;
@@ -345,6 +347,16 @@ namespace ImuToXInput.Config
                     scale = sc;
                 }
             }
+            var slash = left.IndexOf('/');
+            if (slash >= 0)
+            {
+                var after = left.Substring(slash + 1).Trim();
+                left = left.Substring(0, slash).Trim();
+                if (float.TryParse(after, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var divisor) && divisor != 0)
+                {
+                    scale *= 1f / divisor;
+                }
+            }
             var dot = left.IndexOf('.');
             if (dot < 0) { return null; }
             var tracker = left.Substring(0, dot).Trim();
@@ -405,12 +417,19 @@ namespace ImuToXInput.Config
                     return new EulerThresholdCondition { Type = "euler_threshold", Tracker = tracker, Component = comp, Op = op, Value = value };
                 }
             }
+            // Accept Tracker.EulerX, Tracker.EulerY, Tracker.EulerZ (matches axis/trigger axis syntax)
             var dot = leftPart.IndexOf('.');
             if (dot > 0)
             {
                 var tracker = leftPart.Substring(0, dot).Trim();
-                var source = leftPart.Substring(dot + 1).Trim();
-                return new PositionThresholdCondition { Type = "position_threshold", Tracker = tracker, Source = source, Op = op, Value = value };
+                var suffix = leftPart.Substring(dot + 1).Trim();
+                if (suffix.Equals("EulerX", StringComparison.OrdinalIgnoreCase))
+                    return new EulerThresholdCondition { Type = "euler_threshold", Tracker = tracker, Component = "X", Op = op, Value = value };
+                if (suffix.Equals("EulerY", StringComparison.OrdinalIgnoreCase))
+                    return new EulerThresholdCondition { Type = "euler_threshold", Tracker = tracker, Component = "Y", Op = op, Value = value };
+                if (suffix.Equals("EulerZ", StringComparison.OrdinalIgnoreCase))
+                    return new EulerThresholdCondition { Type = "euler_threshold", Tracker = tracker, Component = "Z", Op = op, Value = value };
+                return new PositionThresholdCondition { Type = "position_threshold", Tracker = tracker, Source = suffix, Op = op, Value = value };
             }
             return null;
         }

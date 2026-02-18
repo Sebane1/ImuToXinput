@@ -1,3 +1,5 @@
+using ImuToXInput.Core;
+
 namespace ImuToXInput.ConfigEditor;
 
 partial class GameProfileEditorForm

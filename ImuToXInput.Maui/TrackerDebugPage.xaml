@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ImuToXInput.Maui.TrackerDebugPage"
+             Title="Tracker angles">
+    <ScrollView>
+        <VerticalStackLayout Spacing="12">
+            <VerticalStackLayout.Padding>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="Android" Value="20,80,20,20" />
+                    <On Platform="WinUI" Value="20" />
+                    <On Platform="Default" Value="20" />
+                </OnPlatform>
+            </VerticalStackLayout.Padding>
+            <Label Text="Euler angles (degrees) for connected trackers. Use these names in profile conditions, e.g. HEAD.Euler.X &gt; 30 or LEFT_FOOT.Euler.Y &lt; -5."
+                   FontSize="13" LineBreakMode="WordWrap" TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray200}}" />
+            <Grid ColumnDefinitions="Auto,*,*,*" ColumnSpacing="12" Padding="8,4">
+                <Label Text="Tracker" FontAttributes="Bold" FontSize="13" Grid.Column="0" />
+                <Label Text="X" FontAttributes="Bold" FontSize="13" Grid.Column="1" HorizontalTextAlignment="Center" />
+                <Label Text="Y" FontAttributes="Bold" FontSize="13" Grid.Column="2" HorizontalTextAlignment="Center" />
+                <Label Text="Z" FontAttributes="Bold" FontSize="13" Grid.Column="3" HorizontalTextAlignment="Center" />
+            </Grid>
+            <BoxView HeightRequest="1" Color="{AppThemeBinding Light=#ddd, Dark=#444}" />
+            <CollectionView x:Name="TrackerList" SelectionMode="None"
+                            ItemsSource="{Binding Rows}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="Auto,*,*,*" ColumnSpacing="12" Padding="8,6">
+                            <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="13" Grid.Column="0"
+                                   LineBreakMode="TailTruncation" />
+                            <Label Text="{Binding EulerX}" FontSize="13" Grid.Column="1" HorizontalTextAlignment="Center"
+                                   TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray300}}" />
+                            <Label Text="{Binding EulerY}" FontSize="13" Grid.Column="2" HorizontalTextAlignment="Center"
+                                   TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray300}}" />
+                            <Label Text="{Binding EulerZ}" FontSize="13" Grid.Column="3" HorizontalTextAlignment="Center"
+                                   TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray300}}" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            <Label x:Name="LblEmpty" Text="No trackers connected. Start SlimeVR and ensure the app is receiving tracker data."
+                   FontSize="13" TextColor="{AppThemeBinding Light={StaticResource Gray500}, Dark={StaticResource Gray400}}"
+                   IsVisible="False" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

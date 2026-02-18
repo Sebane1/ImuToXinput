@@ -1,3 +1,5 @@
+using ImuToXInput.Core;
+
 namespace ImuToXInput.ConfigEditor;
 
 public class TriggerAxisDialog : Form

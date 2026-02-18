@@ -22,8 +22,9 @@ public static partial class ControllerLoopService
     private static bool _running;
     private static string? _cachedActiveFileName;
     private static GameProfile? _cachedActiveProfile;
-    private static readonly ThumbstickMenuModeState _menuModeState = new();
-    private static readonly MenuModeToggleState _menuModeToggleState = new();
+    private static int _trackerResetCount;
+    private static GameProfile? _cachedMenuProfile;
+    private static ThumbstickMenuModeState? _menuModeState;
 
     private static string? _currentProfileFileName;
     private static string? _currentProcessName;
@@ -60,13 +61,26 @@ public static partial class ControllerLoopService
         }
 
         _loadedConfig = ConfigLoader.LoadFromDirectory(_configDirectory);
-
-        _slimeVRClient = new SlimeVRClient();
-        _slimeVRClient.Start();
-        var trackers = _slimeVRClient.Trackers;
+        _cachedMenuProfile = ConfigLoader.GetMenuProfile(_configDirectory);
 
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher == null) return;
+
+        _slimeVRClient = new SlimeVRClient();
+        _slimeVRClient.TrackerResetDetected += (_, _) =>
+        {
+            _trackerResetCount++;
+            if (_trackerResetCount % 2 == 0)
+            {
+                dispatcher.Dispatch(() =>
+                {
+                    var current = Preferences.Default.Get(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, false);
+                    Preferences.Default.Set(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, !current);
+                });
+            }
+        };
+        _slimeVRClient.Start();
+        var trackers = _slimeVRClient.Trackers;
 
         _timer = dispatcher.CreateTimer();
         _timer.Interval = TimeSpan.FromMilliseconds(UpdateIntervalMs);
@@ -140,12 +154,8 @@ public static partial class ControllerLoopService
             }
 
             var menuMode = Preferences.Default.Get(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, false);
-            void OnMenuModeToggleRequested()
-            {
-                var current = Preferences.Default.Get(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, false);
-                Preferences.Default.Set(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, !current);
-            }
-            ControllerMappingRunner.Update(trackers, output, _loadedConfig, () => runningGame, activeOverride, menuMode, menuMode ? _menuModeState : null, OnMenuModeToggleRequested, _menuModeToggleState);
+            _menuModeState ??= new ThumbstickMenuModeState();
+            ControllerMappingRunner.Update(trackers, output, _loadedConfig, () => runningGame, activeOverride, menuMode, menuMode ? _cachedMenuProfile : null, menuMode ? _menuModeState : null);
         }
     }
 
@@ -164,6 +174,8 @@ public static partial class ControllerLoopService
         _loadedConfig = null;
         _cachedActiveFileName = null;
         _cachedActiveProfile = null;
+        _cachedMenuProfile = null;
+        _menuModeState = null;
         _currentProfileFileName = null;
         _currentProcessName = null;
         _currentIsOverride = false;
@@ -188,6 +200,7 @@ public static partial class ControllerLoopService
         if (!string.IsNullOrEmpty(_configDirectory) && Directory.Exists(_configDirectory))
         {
             _loadedConfig = ConfigLoader.LoadFromDirectory(_configDirectory);
+            _cachedMenuProfile = ConfigLoader.GetMenuProfile(_configDirectory);
         }
     }
 }

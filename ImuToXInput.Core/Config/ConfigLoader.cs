@@ -17,6 +17,7 @@ namespace ImuToXInput.Config
     {
         public const string ConfigFolderName = "configs";
         public const string DefaultConfigFileName = "default.json";
+        public const string MenuProfileFileName = "menu.json";
 
         public static string GetConfigDirectory()
         {
@@ -79,6 +80,42 @@ namespace ImuToXInput.Config
             }
 
             return result.Profiles.Count > 0 || result.DefaultProfile != null ? result : null;
+        }
+
+        /// <summary>Get the menu mode profile. Loads menu.json from configDirectory if present; otherwise returns a built-in default (head→right stick, hip→left stick).</summary>
+        public static GameProfile GetMenuProfile(string configDirectory)
+        {
+            var menuPath = Path.Combine(configDirectory, MenuProfileFileName);
+            if (File.Exists(menuPath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(menuPath);
+                    var profile = JsonConvert.DeserializeObject<GameProfile>(json);
+                    if (profile != null) return profile;
+                }
+                catch { /* fall through to built-in */ }
+            }
+            return GetBuiltInMenuProfile();
+        }
+
+        private static GameProfile GetBuiltInMenuProfile()
+        {
+            return new GameProfile
+            {
+                Name = "Menu",
+                AxisMappings = new List<AxisMapping>
+                {
+                    new() { Tracker = "HEAD", Source = "EulerX", Scale = 2f, Invert = true, Axis = "LeftThumbY" },
+                    new() { Tracker = "HEAD", Source = "EulerY", Scale = 1f, Invert = true, Axis = "LeftThumbX" },
+                },
+                ButtonMappings = new List<ButtonMapping>()
+                {
+                    new() { Condition = new EulerThresholdCondition { Tracker = "RIGHT_FOOT", Component = "X", Op = "less_than", Value = -20f }, Button = "A" },
+                    new() { Condition = new EulerThresholdCondition { Tracker = "LEFT_FOOT", Component = "X", Op = "greater_than", Value = -20f }, Button = "B" },
+                },
+                TriggerMappings = new List<TriggerMapping>()
+            };
         }
 
         /// <summary>Get the profile to use for the running process. Uses primary profile preference when multiple match.</summary>

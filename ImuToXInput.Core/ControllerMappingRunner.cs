@@ -11,6 +11,7 @@ namespace ImuToXInput.Config;
 public static class ControllerMappingRunner
 {
     private static readonly object StepManiaMarker = new();
+    private static readonly object MenuProfileMarker = new();
     private static object? _lastAppliedKey;
 
     private static void ClearAllInputsIfProfileSwitched(object? newKey, IGamepadOutput output)
@@ -41,10 +42,9 @@ public static class ControllerMappingRunner
     /// <param name="loadedConfig">Loaded configs; can be null.</param>
     /// <param name="getProcessName">Returns current game process name (desktop); MAUI can pass () => null.</param>
     /// <param name="activeProfileOverride">When set (e.g. MAUI active profile), use this profile and ignore process detection.</param>
-    /// <param name="menuMode">When true, thumbsticks snap to neutral after a hold period until user returns to deadzone.</param>
-    /// <param name="menuModeState">State for menu mode; must be non-null when menuMode is true and using a profile.</param>
-    /// <param name="onMenuModeToggleRequested">When the profile's menuModeToggle condition fires (rising edge), this is invoked. Does not send controller input.</param>
-    /// <param name="menuModeToggleState">State for edge-detecting the menu mode toggle; pass non-null when using onMenuModeToggleRequested.</param>
+    /// <param name="menuMode">When true, applies menuProfile instead of the game profile.</param>
+    /// <param name="menuProfile">Profile used when menuMode is true (e.g. head/hip look for UI navigation). Ignored when menuMode is false.</param>
+    /// <param name="menuModeState">When menu mode is active, used for hold-to-snap (sticks reset to neutral after ~0.5s hold). Caller must persist across frames.</param>
     public static void Update(
         Dictionary<string, TrackerState> trackers,
         IGamepadOutput output,
@@ -52,10 +52,16 @@ public static class ControllerMappingRunner
         Func<string?> getProcessName,
         GameProfile? activeProfileOverride,
         bool menuMode = false,
-        ThumbstickMenuModeState? menuModeState = null,
-        Action? onMenuModeToggleRequested = null,
-        MenuModeToggleState? menuModeToggleState = null)
+        GameProfile? menuProfile = null,
+        ThumbstickMenuModeState? menuModeState = null)
     {
+        if (menuMode && menuProfile != null)
+        {
+            ClearAllInputsIfProfileSwitched(MenuProfileMarker, output);
+            ConfigApplier.Apply(menuProfile, trackers, output, menuMode: true, menuModeState: menuModeState);
+            return;
+        }
+
         string? runningGame = getProcessName();
         GameProfile? profileToApply = null;
         if (activeProfileOverride != null)
@@ -80,16 +86,7 @@ public static class ControllerMappingRunner
         if (profileToApply != null)
         {
             ClearAllInputsIfProfileSwitched(profileToApply, output);
-            if (profileToApply.MenuModeToggleCondition != null && menuModeToggleState != null && onMenuModeToggleRequested != null)
-            {
-                bool current = ConfigApplier.EvaluateCondition(profileToApply.MenuModeToggleCondition, trackers);
-                if (current && !menuModeToggleState.LastConditionValue)
-                {
-                    onMenuModeToggleRequested();
-                }
-                menuModeToggleState.LastConditionValue = current;
-            }
-            ConfigApplier.Apply(profileToApply, trackers, output, menuMode: menuMode, menuModeState: menuModeState);
+            ConfigApplier.Apply(profileToApply, trackers, output, menuMode: false);
             return;
         }
 

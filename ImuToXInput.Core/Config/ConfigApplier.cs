@@ -10,6 +10,8 @@ namespace ImuToXInput.Config
     public static class ConfigApplier
     {
         private const float DefaultDeadzone = 0.2f;
+        /// <summary>Menu mode: deadzone for unlocking stick after snap-to-neutral. Larger = more forgiving return to center.</summary>
+        private const float MenuModeUnlockDeadzone = 0.35f;
 
         public static void Apply(
             GameProfile profile,
@@ -149,7 +151,7 @@ namespace ImuToXInput.Config
             float rawY = rawByAxis.TryGetValue(axisY, out var ry) ? ry : 0;
             float nX = NormalizedRaw(rawX);
             float nY = NormalizedRaw(rawY);
-            bool inDeadzone = Math.Abs(nX) < deadzone && Math.Abs(nY) < deadzone;
+            bool inDeadzone = Math.Abs(nX) < MenuModeUnlockDeadzone && Math.Abs(nY) < MenuModeUnlockDeadzone;
             short outX = outByAxis[axisX];
             short outY = outByAxis[axisY];
             bool outputNonZero = outX != 0 || outY != 0;

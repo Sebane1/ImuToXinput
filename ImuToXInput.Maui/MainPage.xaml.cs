@@ -29,7 +29,7 @@ public partial class MainPage : ContentPage
         BtnBrowse.IsVisible = DeviceInfo.Platform != DevicePlatform.Android;
         BorderActiveProfile.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
         BorderDancePad.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
-        BorderMenuMode.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;
+        BorderMenuMode.IsVisible = DeviceInfo.Platform == DevicePlatform.Android || DeviceInfo.Platform == DevicePlatform.WinUI;
         BorderProfileInUse.IsVisible = DeviceInfo.Platform == DevicePlatform.WinUI;
         RefreshActiveProfileLabel();
         RefreshDancePadSwitch();
@@ -40,12 +40,16 @@ public partial class MainPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        RefreshMenuModeSwitch(); // Update when returning (e.g. after gesture toggles menu mode)
-        if (BorderProfileInUse.IsVisible)
+        RefreshMenuModeSwitch();
+        if (BorderProfileInUse.IsVisible || BorderMenuMode.IsVisible)
         {
             _profileInUseTimer = Dispatcher.CreateTimer();
             _profileInUseTimer.Interval = TimeSpan.FromMilliseconds(500);
-            _profileInUseTimer.Tick += (_, _) => RefreshProfileInUseLabel();
+            _profileInUseTimer.Tick += (_, _) =>
+            {
+                RefreshProfileInUseLabel();
+                RefreshMenuModeSwitch(); // Update when tracker resets toggle menu mode
+            };
             _profileInUseTimer.Start();
             RefreshProfileInUseLabel();
         }

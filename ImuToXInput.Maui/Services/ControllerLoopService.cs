@@ -149,10 +149,15 @@ public static partial class ControllerLoopService
         }
     }
 
-    /// <summary>Stop the timer and release resources.</summary>
+    /// <summary>Stop the timer and release resources. Clears controller inputs before stopping.</summary>
     public static void Stop()
     {
         if (!_running) return;
+        var output = GetOutput?.Invoke();
+        if (output != null)
+        {
+            ControllerMappingRunner.ClearInputs(output);
+        }
         _timer?.Stop();
         _timer = null;
         _slimeVRClient = null;

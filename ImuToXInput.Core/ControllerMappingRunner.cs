@@ -20,7 +20,10 @@ public static class ControllerMappingRunner
         ClearAllInputs(output);
     }
 
-    private static void ClearAllInputs(IGamepadOutput output)
+    private static void ClearAllInputs(IGamepadOutput output) => ClearInputs(output);
+
+    /// <summary>Clears all axes, buttons, and triggers to neutral. Call before closing to avoid stuck inputs.</summary>
+    public static void ClearInputs(IGamepadOutput output)
     {
         foreach (GamepadAxis axis in Enum.GetValues<GamepadAxis>())
             output.SetAxis(axis, 0);

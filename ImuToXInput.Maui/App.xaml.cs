@@ -5,6 +5,7 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => Services.ControllerLoopService.Stop();
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
             LogException("UnhandledException", (Exception)e.ExceptionObject);
 #if DEBUG

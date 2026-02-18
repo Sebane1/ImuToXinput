@@ -46,6 +46,14 @@ namespace ImuToXInput
 
             }
 
+            AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+            {
+                if (_gamepadOutput != null)
+                {
+                    ControllerMappingRunner.ClearInputs(_gamepadOutput);
+                }
+            };
+
             if (launchForm)
             {
                 client = new ViGEmClient();

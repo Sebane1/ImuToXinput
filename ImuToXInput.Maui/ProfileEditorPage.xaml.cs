@@ -214,7 +214,12 @@ public partial class ProfileEditorPage : ContentPage
     private static string SummarizeTrigger(TriggerMapping m)
     {
         if (m.FixedValue.HasValue) return "= " + m.FixedValue.Value + " → " + m.Trigger;
-        if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source)) return m.Tracker + "." + m.Source + " → " + m.Trigger;
+        if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source))
+        {
+            var axisStr = (m.Invert ? "-" : "") + m.Tracker + "." + m.Source;
+            if (m.Scale != 1f) axisStr += " * " + m.Scale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return axisStr + " → " + m.Trigger;
+        }
         var s = Summarize(m.Condition) + " → " + m.Trigger;
         if (m.ValueWhenTrue != 255 || m.ValueWhenFalse != 0)
         {
@@ -417,12 +422,12 @@ public partial class ProfileEditorPage : ContentPage
         }
         if (choice == "Axis (tracker source)")
         {
-            var tracker = await DisplayActionSheet("Tracker", "Cancel", null, ConfigEditorConstants.TrackerIds);
-            if (string.IsNullOrEmpty(tracker) || tracker == "Cancel") return;
-            var source = await DisplayActionSheet("Source", "Cancel", null, ConfigEditorConstants.AxisSources);
-            if (string.IsNullOrEmpty(source) || source == "Cancel") return;
-            _triggerMappings.Add(new TriggerMapping { Trigger = trigger, Tracker = tracker, Source = source, Scale = 1f, Invert = false });
-            RefreshTriggerList();
+            var axisPage = new TriggerAxisEditPage("HEAD", "EulerX", 1f, false, (tracker, source, scale, invert) =>
+            {
+                _triggerMappings.Add(new TriggerMapping { Trigger = trigger, Tracker = tracker, Source = source, Scale = scale, Invert = invert });
+                RefreshTriggerList();
+            });
+            await Navigation.PushModalAsync(axisPage);
             return;
         }
 
@@ -448,11 +453,28 @@ public partial class ProfileEditorPage : ContentPage
         var idx = _triggerMappings.FindIndex(m => SummarizeTrigger(m) == sel);
         if (idx < 0) return;
         var m = _triggerMappings[idx];
-        if (m.FixedValue.HasValue || (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source)))
+
+        if (m.FixedValue.HasValue)
         {
-            await DisplayAlert("Trigger", "Edit fixed value or axis triggers via the Script editor.", "OK");
+            var raw = await DisplayPromptAsync("Edit fixed trigger value", "Value 0–255:", initialValue: m.FixedValue.Value.ToString(), maxLength: 3, keyboard: Keyboard.Numeric);
+            if (raw != null && byte.TryParse(raw, out byte val))
+            {
+                _triggerMappings[idx] = new TriggerMapping { Trigger = m.Trigger, FixedValue = val };
+                RefreshTriggerList();
+            }
             return;
         }
+        if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source))
+        {
+            var axisPage = new TriggerAxisEditPage(m.Tracker, m.Source, m.Scale, m.Invert, (tracker, source, scale, invert) =>
+            {
+                _triggerMappings[idx] = new TriggerMapping { Trigger = m.Trigger, Tracker = tracker, Source = source, Scale = scale, Invert = invert };
+                RefreshTriggerList();
+            });
+            await Navigation.PushModalAsync(axisPage);
+            return;
+        }
+
         MappingCondition? result = null;
         var page = new ConditionEditPage(m.Condition, c => result = c);
         await Navigation.PushModalAsync(page);

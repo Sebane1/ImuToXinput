@@ -62,6 +62,10 @@ namespace ImuToXInput.Config
 
         [JsonProperty("axis")]
         public string Axis { get; set; } = "";
+
+        /// <summary>Deadzone 0–1; values within ±deadzone map to 0. Null = use profile default.</summary>
+        [JsonProperty("deadzone")]
+        public float? Deadzone { get; set; }
     }
 
     /// <summary>
@@ -181,5 +185,9 @@ namespace ImuToXInput.Config
 
         [JsonProperty("valueWhenFalse")]
         public byte ValueWhenFalse { get; set; } = 0;
+
+        /// <summary>Deadzone 0–1 for axis triggers; values within ±deadzone map to 0. Null = use profile default.</summary>
+        [JsonProperty("deadzone")]
+        public float? Deadzone { get; set; }
     }
 }

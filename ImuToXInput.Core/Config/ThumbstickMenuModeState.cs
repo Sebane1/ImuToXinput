@@ -14,6 +14,12 @@ public class ThumbstickMenuModeState
     public bool RightLocked { get; set; }
     public DateTime? LeftNonZeroSinceUtc { get; set; }
     public DateTime? RightNonZeroSinceUtc { get; set; }
+
+    /// <summary>Per-axis offset (tracker position at last snap). When set, incoming values are relative to this center.</summary>
+    public float? LeftThumbXOffset { get; set; }
+    public float? LeftThumbYOffset { get; set; }
+    public float? RightThumbXOffset { get; set; }
+    public float? RightThumbYOffset { get; set; }
 }
 
 /// <summary>

@@ -115,9 +115,10 @@ public partial class ProfileEditorPage : ContentPage
         AxisGrid.Add(new Label { Text = "Tracker", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center, Margin = headerMargin }, 0, 0);
         AxisGrid.Add(new Label { Text = "Source", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center, Margin = headerMargin }, 1, 0);
         AxisGrid.Add(new Label { Text = "Scale", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center, Margin = headerMargin }, 2, 0);
-        AxisGrid.Add(new Label { Text = "Invert", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center }, 3, 0);
-        AxisGrid.Add(new Label { Text = "Axis", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center, Margin = headerMargin }, 4, 0);
-        AxisGrid.Add(new Label { Text = " ", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center }, 5, 0);
+        AxisGrid.Add(new Label { Text = "DZ", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center, Margin = headerMargin }, 3, 0);
+        AxisGrid.Add(new Label { Text = "Invert", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center }, 4, 0);
+        AxisGrid.Add(new Label { Text = "Axis", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center, Margin = headerMargin }, 5, 0);
+        AxisGrid.Add(new Label { Text = " ", FontSize = 12, TextColor = Color.FromArgb("#888"), VerticalOptions = LayoutOptions.Center }, 6, 0);
 
         int rowIndex = 1;
         foreach (var a in _profile.AxisMappings)
@@ -129,6 +130,7 @@ public partial class ProfileEditorPage : ContentPage
             var trackerPicker = new Picker { Title = "Tracker", ItemsSource = ConfigEditorConstants.TrackerIds, MinimumHeightRequest = rowHeight, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill };
             var sourcePicker = new Picker { Title = "Source", ItemsSource = ConfigEditorConstants.AxisSources, MinimumHeightRequest = rowHeight, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill };
             var scaleEntry = new Entry { Text = a.Scale.ToString("G"), Keyboard = Keyboard.Numeric, Placeholder = "1", MinimumHeightRequest = rowHeight, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill, Margin = controlTopMargin };
+            var deadzoneEntry = new Entry { Text = a.Deadzone?.ToString("G") ?? "", Keyboard = Keyboard.Numeric, Placeholder = "0.2", MinimumHeightRequest = rowHeight, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill, Margin = controlTopMargin };
             var invertLabel = new Label { Text = "Invert", VerticalOptions = LayoutOptions.Center };
             var invertSwitch = new Switch { IsToggled = a.Invert, VerticalOptions = LayoutOptions.Center };
             var invertRow = new HorizontalStackLayout { Spacing = 4, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Fill, Margin = controlTopMargin };
@@ -143,7 +145,7 @@ public partial class ProfileEditorPage : ContentPage
             sourcePicker.SelectedItem = a.Source;
             axisPicker.SelectedItem = a.Axis;
 
-            var binding = new AxisRowBinding { TrackerPicker = trackerPicker, SourcePicker = sourcePicker, ScaleEntry = scaleEntry, InvertSwitch = invertSwitch, AxisPicker = axisPicker, Mapping = a };
+            var binding = new AxisRowBinding { TrackerPicker = trackerPicker, SourcePicker = sourcePicker, ScaleEntry = scaleEntry, DeadzoneEntry = deadzoneEntry, InvertSwitch = invertSwitch, AxisPicker = axisPicker, Mapping = a };
             trackerPicker.BindingContext = binding;
 
             removeBtn.Clicked += (_, _) =>
@@ -155,9 +157,10 @@ public partial class ProfileEditorPage : ContentPage
             AxisGrid.Add(trackerPicker, 0, rowIndex);
             AxisGrid.Add(sourcePicker, 1, rowIndex);
             AxisGrid.Add(scaleEntry, 2, rowIndex);
-            AxisGrid.Add(invertRow, 3, rowIndex);
-            AxisGrid.Add(axisPicker, 4, rowIndex);
-            AxisGrid.Add(removeCell, 5, rowIndex);
+            AxisGrid.Add(deadzoneEntry, 3, rowIndex);
+            AxisGrid.Add(invertRow, 4, rowIndex);
+            AxisGrid.Add(axisPicker, 5, rowIndex);
+            AxisGrid.Add(removeCell, 6, rowIndex);
             rowIndex++;
         }
     }
@@ -167,6 +170,7 @@ public partial class ProfileEditorPage : ContentPage
         public Picker TrackerPicker { get; init; } = null!;
         public Picker SourcePicker { get; init; } = null!;
         public Entry ScaleEntry { get; init; } = null!;
+        public Entry DeadzoneEntry { get; init; } = null!;
         public Switch InvertSwitch { get; init; } = null!;
         public Picker AxisPicker { get; init; } = null!;
         public AxisMapping Mapping { get; init; } = null!;
@@ -182,14 +186,18 @@ public partial class ProfileEditorPage : ContentPage
         foreach (var child in AxisGrid.Children)
         {
             if (child is not View v || v.BindingContext is not AxisRowBinding binding) continue;
-            float scale = float.TryParse(binding.ScaleEntry.Text, out var s) ? s : 1f;
+            float scale = float.TryParse(binding.ScaleEntry.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s) ? s : 1f;
+            float? deadzone = null;
+            if (!string.IsNullOrWhiteSpace(binding.DeadzoneEntry.Text) && float.TryParse(binding.DeadzoneEntry.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dz) && dz >= 0 && dz <= 1)
+                deadzone = dz;
             _profile.AxisMappings.Add(new AxisMapping
             {
                 Tracker = binding.TrackerPicker.SelectedItem?.ToString() ?? "",
                 Source = binding.SourcePicker.SelectedItem?.ToString() ?? "",
                 Scale = scale,
                 Invert = binding.InvertSwitch.IsToggled,
-                Axis = binding.AxisPicker.SelectedItem?.ToString() ?? ""
+                Axis = binding.AxisPicker.SelectedItem?.ToString() ?? "",
+                Deadzone = deadzone
             });
         }
 
@@ -218,6 +226,7 @@ public partial class ProfileEditorPage : ContentPage
         {
             var axisStr = (m.Invert ? "-" : "") + m.Tracker + "." + m.Source;
             if (m.Scale != 1f) axisStr += " * " + m.Scale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (m.Deadzone.HasValue) axisStr += " dz " + m.Deadzone.Value.ToString("G", System.Globalization.CultureInfo.InvariantCulture);
             return axisStr + " → " + m.Trigger;
         }
         var s = Summarize(m.Condition) + " → " + m.Trigger;
@@ -422,9 +431,9 @@ public partial class ProfileEditorPage : ContentPage
         }
         if (choice == "Axis (tracker source)")
         {
-            var axisPage = new TriggerAxisEditPage("HEAD", "EulerX", 1f, false, (tracker, source, scale, invert) =>
+            var axisPage = new TriggerAxisEditPage("HEAD", "EulerX", 1f, false, null, (tracker, source, scale, invert, deadzone) =>
             {
-                _triggerMappings.Add(new TriggerMapping { Trigger = trigger, Tracker = tracker, Source = source, Scale = scale, Invert = invert });
+                _triggerMappings.Add(new TriggerMapping { Trigger = trigger, Tracker = tracker, Source = source, Scale = scale, Invert = invert, Deadzone = deadzone });
                 RefreshTriggerList();
             });
             await Navigation.PushModalAsync(axisPage);
@@ -466,9 +475,9 @@ public partial class ProfileEditorPage : ContentPage
         }
         if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source))
         {
-            var axisPage = new TriggerAxisEditPage(m.Tracker, m.Source, m.Scale, m.Invert, (tracker, source, scale, invert) =>
+            var axisPage = new TriggerAxisEditPage(m.Tracker, m.Source, m.Scale, m.Invert, m.Deadzone, (tracker, source, scale, invert, deadzone) =>
             {
-                _triggerMappings[idx] = new TriggerMapping { Trigger = m.Trigger, Tracker = tracker, Source = source, Scale = scale, Invert = invert };
+                _triggerMappings[idx] = new TriggerMapping { Trigger = m.Trigger, Tracker = tracker, Source = source, Scale = scale, Invert = invert, Deadzone = deadzone };
                 RefreshTriggerList();
             });
             await Navigation.PushModalAsync(axisPage);

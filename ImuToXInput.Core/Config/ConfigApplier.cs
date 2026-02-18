@@ -37,37 +37,47 @@ namespace ImuToXInput.Config
                 }
             }
 
-            // Build raw values per thumbstick axis (from profile mappings; 0 if unmapped)
+            // Build raw values and deadzone per thumbstick axis (from profile mappings; 0 if unmapped)
             var rawByAxis = new Dictionary<GamepadAxis, float>
             {
                 { GamepadAxis.LeftThumbX, 0 }, { GamepadAxis.LeftThumbY, 0 },
                 { GamepadAxis.RightThumbX, 0 }, { GamepadAxis.RightThumbY, 0 }
             };
+            var deadzoneByAxis = new Dictionary<GamepadAxis, float>();
             foreach (var m in profile.AxisMappings)
             {
                 if (!trackers.TryGetValue(m.Tracker, out var t)) continue;
                 if (!TryParseAxis(m.Axis, out var axis)) continue;
                 float raw = GetAxisSourceValue(t, m.Source) * m.Scale * (m.Invert ? -1f : 1f);
+                if (menuMode && menuModeState != null)
+                {
+                    var off = GetOffset(menuModeState, axis);
+                    if (off.HasValue) raw -= off.Value;
+                }
                 rawByAxis[axis] = raw;
+                deadzoneByAxis[axis] = m.Deadzone ?? axisDeadzone;
             }
 
-            // Apply deadzone
+            // Apply deadzone (per-axis if configured)
             var outByAxis = new Dictionary<GamepadAxis, short>();
             foreach (var kv in rawByAxis)
-                outByAxis[kv.Key] = ApplyDeadzone(kv.Value, axisDeadzone);
+            {
+                var dz = deadzoneByAxis.TryGetValue(kv.Key, out var d) ? d : axisDeadzone;
+                outByAxis[kv.Key] = ApplyDeadzone(kv.Value, dz);
+            }
 
-            // Menu mode: per-stick lock after hold duration, unlock when raw in deadzone
+            // Menu mode: per-stick lock after hold duration, unlock when raw in deadzone; on lock, set new center offset
             if (menuMode && menuModeState != null)
             {
                 var now = DateTime.UtcNow;
                 bool leftLocked = menuModeState.LeftLocked;
                 DateTime? leftNonZero = menuModeState.LeftNonZeroSinceUtc;
-                ApplyMenuModeStick(GamepadAxis.LeftThumbX, GamepadAxis.LeftThumbY, rawByAxis, outByAxis, axisDeadzone, menuModeHoldMs, now, ref leftLocked, ref leftNonZero);
+                ApplyMenuModeStick(menuModeState, GamepadAxis.LeftThumbX, GamepadAxis.LeftThumbY, rawByAxis, outByAxis, axisDeadzone, menuModeHoldMs, now, ref leftLocked, ref leftNonZero);
                 menuModeState.LeftLocked = leftLocked;
                 menuModeState.LeftNonZeroSinceUtc = leftNonZero;
                 bool rightLocked = menuModeState.RightLocked;
                 DateTime? rightNonZero = menuModeState.RightNonZeroSinceUtc;
-                ApplyMenuModeStick(GamepadAxis.RightThumbX, GamepadAxis.RightThumbY, rawByAxis, outByAxis, axisDeadzone, menuModeHoldMs, now, ref rightLocked, ref rightNonZero);
+                ApplyMenuModeStick(menuModeState, GamepadAxis.RightThumbX, GamepadAxis.RightThumbY, rawByAxis, outByAxis, axisDeadzone, menuModeHoldMs, now, ref rightLocked, ref rightNonZero);
                 menuModeState.RightLocked = rightLocked;
                 menuModeState.RightNonZeroSinceUtc = rightNonZero;
             }
@@ -115,7 +125,7 @@ namespace ImuToXInput.Config
                 else if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source) && trackers.TryGetValue(m.Tracker, out var triggerTracker))
                 {
                     float raw = GetAxisSourceValue(triggerTracker, m.Source) * m.Scale * (m.Invert ? -1f : 1f);
-                    value = FloatToTrigger(raw, axisDeadzone);
+                    value = FloatToTrigger(raw, m.Deadzone ?? axisDeadzone);
                 }
                 else if (m.Condition != null)
                 {
@@ -140,7 +150,31 @@ namespace ImuToXInput.Config
             return Math.Clamp(raw / 15f, -1f, 1f);
         }
 
+        private static float? GetOffset(ThumbstickMenuModeState state, GamepadAxis axis)
+        {
+            return axis switch
+            {
+                GamepadAxis.LeftThumbX => state.LeftThumbXOffset,
+                GamepadAxis.LeftThumbY => state.LeftThumbYOffset,
+                GamepadAxis.RightThumbX => state.RightThumbXOffset,
+                GamepadAxis.RightThumbY => state.RightThumbYOffset,
+                _ => null
+            };
+        }
+
+        private static void SetOffset(ThumbstickMenuModeState state, GamepadAxis axis, float value)
+        {
+            switch (axis)
+            {
+                case GamepadAxis.LeftThumbX: state.LeftThumbXOffset = value; break;
+                case GamepadAxis.LeftThumbY: state.LeftThumbYOffset = value; break;
+                case GamepadAxis.RightThumbX: state.RightThumbXOffset = value; break;
+                case GamepadAxis.RightThumbY: state.RightThumbYOffset = value; break;
+            }
+        }
+
         private static void ApplyMenuModeStick(
+            ThumbstickMenuModeState menuModeState,
             GamepadAxis axisX, GamepadAxis axisY,
             Dictionary<GamepadAxis, float> rawByAxis,
             Dictionary<GamepadAxis, short> outByAxis,
@@ -181,6 +215,11 @@ namespace ImuToXInput.Config
                     nonZeroSinceUtc = null;
                     outByAxis[axisX] = 0;
                     outByAxis[axisY] = 0;
+                    // Set new center offset: current physical position becomes zero
+                    float physX = rawX + (GetOffset(menuModeState, axisX) ?? 0);
+                    float physY = rawY + (GetOffset(menuModeState, axisY) ?? 0);
+                    SetOffset(menuModeState, axisX, physX);
+                    SetOffset(menuModeState, axisY, physY);
                 }
             }
             else

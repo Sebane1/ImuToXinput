@@ -5,9 +5,9 @@ namespace ImuToXInput.Maui;
 
 public partial class TriggerAxisEditPage : ContentPage
 {
-    private readonly Action<string, string, float, bool>? _onComplete;
+    private readonly Action<string, string, float, bool, float?>? _onComplete;
 
-    public TriggerAxisEditPage(string tracker, string source, float scale, bool invert, Action<string, string, float, bool>? onComplete = null)
+    public TriggerAxisEditPage(string tracker, string source, float scale, bool invert, float? deadzone, Action<string, string, float, bool, float?>? onComplete = null)
     {
         InitializeComponent();
         _onComplete = onComplete;
@@ -22,6 +22,7 @@ public partial class TriggerAxisEditPage : ContentPage
         if (sourceIdx >= 0) PickerSource.SelectedIndex = sourceIdx;
 
         EntryScale.Text = scale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        EntryDeadzone.Text = deadzone?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "";
         SwitchInvert.IsToggled = invert;
     }
 
@@ -35,7 +36,10 @@ public partial class TriggerAxisEditPage : ContentPage
             return;
         }
         var scale = float.TryParse(EntryScale.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s) ? s : 1f;
-        _onComplete?.Invoke(tracker, source, scale, SwitchInvert.IsToggled);
+        float? deadzone = null;
+        if (!string.IsNullOrWhiteSpace(EntryDeadzone.Text) && float.TryParse(EntryDeadzone.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dz) && dz >= 0 && dz <= 1)
+            deadzone = dz;
+        _onComplete?.Invoke(tracker, source, scale, SwitchInvert.IsToggled, deadzone);
         await Navigation.PopModalAsync();
     }
 

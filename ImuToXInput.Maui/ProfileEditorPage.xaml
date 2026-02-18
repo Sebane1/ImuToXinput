@@ -45,7 +45,7 @@
                 <Button x:Name="BtnRemoveAxis" Text="Remove selected" Grid.Column="1" Clicked="OnRemoveAxisClicked" Style="{StaticResource CompactButton}" />
             </Grid>
             <!-- Single grid: row 0 = header, row 1+ = data (ensures columns align) -->
-            <Grid x:Name="AxisGrid" ColumnDefinitions="100,90,56,90,100,40" ColumnSpacing="8" RowSpacing="6" Margin="0,6,0,0" />
+            <Grid x:Name="AxisGrid" ColumnDefinitions="100,90,56,56,90,100,40" ColumnSpacing="8" RowSpacing="6" Margin="0,6,0,0" />
 
             <!-- Button mappings -->
             <Label Text="Button mappings" FontAttributes="Bold" FontSize="18" />

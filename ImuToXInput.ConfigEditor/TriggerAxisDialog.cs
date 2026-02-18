@@ -8,16 +8,19 @@ public class TriggerAxisDialog : Form
     private readonly ComboBox _cmbSource;
     private readonly NumericUpDown _numScale;
     private readonly CheckBox _chkInvert;
+    private readonly CheckBox _chkCustomDeadzone;
+    private readonly NumericUpDown _numDeadzone;
 
     public string Tracker => _cmbTracker.SelectedItem?.ToString() ?? "";
     public string Source => _cmbSource.SelectedItem?.ToString() ?? "";
     public float AxisScale => (float)_numScale.Value;
     public bool Invert => _chkInvert.Checked;
+    public float? Deadzone => _chkCustomDeadzone.Checked ? (float)_numDeadzone.Value : null;
 
-    public TriggerAxisDialog(string? initialTracker = null, string? initialSource = null, float initialScale = 1f, bool initialInvert = false)
+    public TriggerAxisDialog(string? initialTracker = null, string? initialSource = null, float initialScale = 1f, bool initialInvert = false, float? initialDeadzone = null)
     {
         Text = "Trigger from axis";
-        Size = new Size(280, 200);
+        Size = new Size(280, 248);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
         MinimizeBox = false;
@@ -37,8 +40,11 @@ public class TriggerAxisDialog : Form
         _numScale = new NumericUpDown { Location = new Point(12, 118), Width = 80, Minimum = 0.01m, Maximum = 10m, DecimalPlaces = 2, Increment = 0.1m, Value = (decimal)Math.Clamp(initialScale, 0.01f, 10f) };
         _chkInvert = new CheckBox { Text = "Invert", Location = new Point(110, 118), AutoSize = true, Checked = initialInvert };
 
-        var btnOk = new Button { Text = "OK", Location = new Point(12, 152), Width = 75, DialogResult = DialogResult.OK };
-        var btnCancel = new Button { Text = "Cancel", Location = new Point(93, 152), Width = 75, DialogResult = DialogResult.Cancel };
+        _chkCustomDeadzone = new CheckBox { Text = "Custom deadzone (0–1)", Location = new Point(12, 144), AutoSize = true, Checked = initialDeadzone.HasValue };
+        _numDeadzone = new NumericUpDown { Location = new Point(12, 164), Width = 80, Minimum = 0m, Maximum = 1m, DecimalPlaces = 2, Increment = 0.05m, Value = (decimal)Math.Clamp(initialDeadzone ?? 0.2f, 0f, 1f) };
+
+        var btnOk = new Button { Text = "OK", Location = new Point(12, 196), Width = 75, DialogResult = DialogResult.OK };
+        var btnCancel = new Button { Text = "Cancel", Location = new Point(93, 196), Width = 75, DialogResult = DialogResult.Cancel };
         AcceptButton = btnOk;
         CancelButton = btnCancel;
 
@@ -49,6 +55,8 @@ public class TriggerAxisDialog : Form
         Controls.Add(lblScale);
         Controls.Add(_numScale);
         Controls.Add(_chkInvert);
+        Controls.Add(_chkCustomDeadzone);
+        Controls.Add(_numDeadzone);
         Controls.Add(btnOk);
         Controls.Add(btnCancel);
     }

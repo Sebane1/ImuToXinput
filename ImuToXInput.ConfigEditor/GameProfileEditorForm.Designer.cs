@@ -100,6 +100,7 @@ partial class GameProfileEditorForm
         dgvAxis.Columns.Add(colSource);
         dgvAxis.Columns.Add(new DataGridViewTextBoxColumn { Name = "Scale", HeaderText = "Scale", Width = 60 });
         dgvAxis.Columns.Add(new DataGridViewCheckBoxColumn { Name = "Invert", HeaderText = "Invert", Width = 50 });
+        dgvAxis.Columns.Add(new DataGridViewTextBoxColumn { Name = "Deadzone", HeaderText = "DZ", Width = 50 });
         var colAxis = new DataGridViewComboBoxColumn { Name = "Axis", HeaderText = "Axis", Width = 100 };
         colAxis.Items.AddRange(ConfigEditorConstants.AxisOutputs);
         dgvAxis.Columns.Add(colAxis);

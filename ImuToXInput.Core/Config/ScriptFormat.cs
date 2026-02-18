@@ -11,7 +11,7 @@ namespace ImuToXInput.Config
             sb.AppendLine($"name \"{Escape(profile.Name)}\"");
             if (profile.ProcessNames is { Count: > 0 })
             {
-                sb.AppendLine("processNames " + string.Join(", ", profile.ProcessNames));
+                sb.AppendLine("processNames " + string.Join(", ", profile.ProcessNames.Select(n => "\"" + Escape(n) + "\"")));
             }
             if (profile.Trackers is { Count: > 0 })
             {
@@ -19,12 +19,13 @@ namespace ImuToXInput.Config
             }
             sb.AppendLine();
 
-            sb.AppendLine("// Axis: [−]Tracker.Source [* scale | / divisor] [invert] -> Axis  (leading − or invert)");
+            sb.AppendLine("// Axis: [−]Tracker.Source [* scale | / divisor] [invert] -> Axis [deadzone N]  (leading − or invert)");
             foreach (var a in profile.AxisMappings)
             {
                 var scale = (a.Scale != 1f || a.Invert) ? $" * {a.Scale:G}" : "";
                 var prefix = a.Invert ? "-" : "";
-                sb.AppendLine($"axis {prefix}{a.Tracker}.{a.Source}{scale} -> {a.Axis}");
+                var dz = a.Deadzone.HasValue ? $" deadzone {a.Deadzone.Value:G}" : "";
+                sb.AppendLine($"axis {prefix}{a.Tracker}.{a.Source}{scale} -> {a.Axis}{dz}");
             }
             sb.AppendLine();
 
@@ -45,7 +46,8 @@ namespace ImuToXInput.Config
                 }
                 else if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source))
                 {
-                    sb.AppendLine("trigger " + m.Trigger + " = " + (m.Invert ? "-" : "") + m.Tracker + "." + m.Source + (m.Scale != 1f ? " * " + m.Scale : ""));
+                    var dz = m.Deadzone.HasValue ? " deadzone " + m.Deadzone.Value.ToString("G", System.Globalization.CultureInfo.InvariantCulture) : "";
+                    sb.AppendLine("trigger " + m.Trigger + " = " + (m.Invert ? "-" : "") + m.Tracker + "." + m.Source + (m.Scale != 1f ? " * " + m.Scale : "") + dz);
                 }
                 else if (m.Condition != null)
                 {
@@ -170,7 +172,7 @@ namespace ImuToXInput.Config
                 if (line.StartsWith("processNames ", StringComparison.OrdinalIgnoreCase))
                 {
                     var rest = line.Substring(12).Trim();
-                    profile.ProcessNames = rest.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+                    profile.ProcessNames = ParseCommaSeparatedQuotedStrings(rest);
                     continue;
                 }
                 if (line.StartsWith("trackers ", StringComparison.OrdinalIgnoreCase))
@@ -275,6 +277,11 @@ namespace ImuToXInput.Config
                                                     axis.Scale *= 1f / div;
                                                     i++;
                                                 }
+                                                else if (parts[i].Equals("deadzone", StringComparison.OrdinalIgnoreCase) && i + 1 < parts.Length && float.TryParse(parts[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dz) && dz >= 0 && dz <= 1)
+                                                {
+                                                    axis.Deadzone = dz;
+                                                    i++;
+                                                }
                                             }
                                             profile.TriggerMappings.Add(axis);
                                             added = true;
@@ -325,6 +332,41 @@ namespace ImuToXInput.Config
             return s;
         }
 
+        /// <summary>Parse comma-separated values; each may be quoted "..." or bare (legacy).</summary>
+        private static List<string> ParseCommaSeparatedQuotedStrings(string s)
+        {
+            var result = new List<string>();
+            s = s.Trim();
+            var i = 0;
+            while (i < s.Length)
+            {
+                while (i < s.Length && char.IsWhiteSpace(s[i])) i++;
+                if (i >= s.Length) break;
+                if (s[i] == '"')
+                {
+                    var start = i + 1;
+                    i++;
+                    while (i < s.Length)
+                    {
+                        if (s[i] == '\\' && i + 1 < s.Length) { i += 2; continue; }
+                        if (s[i] == '"') break;
+                        i++;
+                    }
+                    result.Add(Unescape(s.Substring(start, i - start)));
+                    i++;
+                }
+                else
+                {
+                    var start = i;
+                    while (i < s.Length && s[i] != ',') i++;
+                    var token = s.Substring(start, i - start).Trim();
+                    if (token.Length > 0) result.Add(token);
+                }
+                while (i < s.Length && (s[i] == ',' || char.IsWhiteSpace(s[i]))) i++;
+            }
+            return result;
+        }
+
         private static AxisMapping? ParseAxisLine(string line)
         {
             var arrow = line.IndexOf("->", StringComparison.Ordinal);
@@ -361,7 +403,19 @@ namespace ImuToXInput.Config
             if (dot < 0) { return null; }
             var tracker = left.Substring(0, dot).Trim();
             var source = left.Substring(dot + 1).Trim();
-            return new AxisMapping { Tracker = tracker, Source = source, Scale = scale, Invert = invert, Axis = axis };
+            float? deadzone = null;
+            var dzIdx = right.IndexOf(" deadzone ", StringComparison.OrdinalIgnoreCase);
+            if (dzIdx >= 0)
+            {
+                var dzStr = right.Substring(dzIdx + 10).Trim();
+                if (float.TryParse(dzStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dzVal) && dzVal >= 0 && dzVal <= 1)
+                    deadzone = dzVal;
+                right = right.Substring(0, dzIdx).Trim();
+            }
+            axis = right;
+            var a = new AxisMapping { Tracker = tracker, Source = source, Scale = scale, Invert = invert, Axis = axis };
+            if (deadzone.HasValue) a.Deadzone = deadzone;
+            return a;
         }
 
         private static (MappingCondition? cond, string? output) ParseWhenLine(string line, int lineNum)

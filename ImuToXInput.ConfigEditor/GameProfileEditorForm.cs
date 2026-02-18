@@ -251,7 +251,7 @@ public partial class GameProfileEditorForm : Form
 
         dgvAxis.Rows.Clear();
         foreach (var a in _profile.AxisMappings)
-            dgvAxis.Rows.Add(a.Tracker, a.Source, a.Scale, a.Invert, a.Axis);
+            dgvAxis.Rows.Add(a.Tracker, a.Source, a.Scale, a.Invert, a.Deadzone?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "", a.Axis);
 
         _buttonMappings = _profile.ButtonMappings?.ToList() ?? new List<ButtonMapping>();
         _triggerMappings = _profile.TriggerMappings?.ToList() ?? new List<TriggerMapping>();
@@ -279,13 +279,18 @@ public partial class GameProfileEditorForm : Form
         foreach (DataGridViewRow row in dgvAxis.Rows)
         {
             if (row.IsNewRow || row.Cells[0].Value == null) { continue; }
+            float? deadzone = null;
+            var dzStr = row.Cells[4].Value?.ToString()?.Trim();
+            if (!string.IsNullOrEmpty(dzStr) && float.TryParse(dzStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dz) && dz >= 0 && dz <= 1)
+                deadzone = dz;
             _profile.AxisMappings.Add(new AxisMapping
             {
                 Tracker = row.Cells[0].Value?.ToString() ?? "",
                 Source = row.Cells[1].Value?.ToString() ?? "",
-                Scale = float.TryParse(row.Cells[2].Value?.ToString(), out var s) ? s : 1f,
+                Scale = float.TryParse(row.Cells[2].Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s) ? s : 1f,
                 Invert = row.Cells[3].Value is true,
-                Axis = row.Cells[4].Value?.ToString() ?? ""
+                Deadzone = deadzone,
+                Axis = row.Cells[5].Value?.ToString() ?? ""
             });
         }
 
@@ -319,6 +324,7 @@ public partial class GameProfileEditorForm : Form
         {
             var axisStr = (m.Invert ? "-" : "") + m.Tracker + "." + m.Source;
             if (m.Scale != 1f) axisStr += " * " + m.Scale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (m.Deadzone.HasValue) axisStr += " dz " + m.Deadzone.Value.ToString("G", System.Globalization.CultureInfo.InvariantCulture);
             return axisStr + " → " + (m.Trigger ?? "");
         }
         var s = Summarize(m.Condition) + " → " + (m.Trigger ?? "");
@@ -383,7 +389,7 @@ public partial class GameProfileEditorForm : Form
 
     private void btnAddAxis_Click(object sender, EventArgs e)
     {
-        dgvAxis.Rows.Add("HEAD", "EulerX", 1f, false, "RightThumbX");
+        dgvAxis.Rows.Add("HEAD", "EulerX", 1f, false, "", "RightThumbX");
     }
 
     private void btnRemoveAxis_Click(object sender, EventArgs e)
@@ -445,7 +451,7 @@ public partial class GameProfileEditorForm : Form
         using var dlg = new TriggerAxisDialog();
         if (dlg.ShowDialog() != DialogResult.OK || string.IsNullOrEmpty(dlg.Tracker) || string.IsNullOrEmpty(dlg.Source)) return;
         var trigger = cmbTrigger.SelectedItem?.ToString() ?? "LeftTrigger";
-        _triggerMappings.Add(new TriggerMapping { Trigger = trigger, Tracker = dlg.Tracker, Source = dlg.Source, Scale = dlg.AxisScale, Invert = dlg.Invert });
+        _triggerMappings.Add(new TriggerMapping { Trigger = trigger, Tracker = dlg.Tracker, Source = dlg.Source, Scale = dlg.AxisScale, Invert = dlg.Invert, Deadzone = dlg.Deadzone });
         RefreshTriggerList();
     }
 
@@ -464,9 +470,9 @@ public partial class GameProfileEditorForm : Form
         }
         if (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source))
         {
-            using var dlg = new TriggerAxisDialog(m.Tracker, m.Source, m.Scale, m.Invert);
+            using var dlg = new TriggerAxisDialog(m.Tracker, m.Source, m.Scale, m.Invert, m.Deadzone);
             if (dlg.ShowDialog() != DialogResult.OK || string.IsNullOrEmpty(dlg.Tracker) || string.IsNullOrEmpty(dlg.Source)) return;
-            _triggerMappings[i] = new TriggerMapping { Trigger = m.Trigger, Tracker = dlg.Tracker, Source = dlg.Source, Scale = dlg.AxisScale, Invert = dlg.Invert };
+            _triggerMappings[i] = new TriggerMapping { Trigger = m.Trigger, Tracker = dlg.Tracker, Source = dlg.Source, Scale = dlg.AxisScale, Invert = dlg.Invert, Deadzone = dlg.Deadzone };
             RefreshTriggerList();
             return;
         }

@@ -11,6 +11,8 @@
             <Picker x:Name="PickerSource" Title="Select source" />
             <Label Text="Scale (e.g. 1 or 0.5)" />
             <Entry x:Name="EntryScale" Keyboard="Numeric" Placeholder="1" />
+            <Label Text="Deadzone (0–1, blank = default 0.2)" />
+            <Entry x:Name="EntryDeadzone" Keyboard="Numeric" Placeholder="0.2" />
             <Label Text="Invert" />
             <Switch x:Name="SwitchInvert" />
             <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,16,0,0">

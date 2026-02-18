@@ -23,6 +23,8 @@ public static partial class ControllerLoopService
     private static string? _cachedActiveFileName;
     private static GameProfile? _cachedActiveProfile;
     private static int _trackerResetCount;
+    private static DateTime _lastTrackerResetUtc = DateTime.MinValue;
+    private const double MenuModeResetWindowSeconds = 15;
     private static GameProfile? _cachedMenuProfile;
     private static ThumbstickMenuModeState? _menuModeState;
 
@@ -69,6 +71,10 @@ public static partial class ControllerLoopService
         _slimeVRClient = new SlimeVRClient();
         _slimeVRClient.TrackerResetDetected += (_, _) =>
         {
+            var now = DateTime.UtcNow;
+            if ((now - _lastTrackerResetUtc).TotalSeconds > MenuModeResetWindowSeconds)
+                _trackerResetCount = 0;
+            _lastTrackerResetUtc = now;
             _trackerResetCount++;
             if (_trackerResetCount % 2 == 0)
             {

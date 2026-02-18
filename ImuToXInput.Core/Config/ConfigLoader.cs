@@ -112,7 +112,7 @@ namespace ImuToXInput.Config
                 ButtonMappings = new List<ButtonMapping>()
                 {
                     new() { Condition = new EulerThresholdCondition { Tracker = "RIGHT_FOOT", Component = "X", Op = "less_than", Value = -20f }, Button = "A" },
-                    new() { Condition = new EulerThresholdCondition { Tracker = "LEFT_FOOT", Component = "X", Op = "greater_than", Value = -20f }, Button = "B" },
+                    new() { Condition = new EulerThresholdCondition { Tracker = "LEFT_FOOT", Component = "X", Op = "less_than", Value = -20f }, Button = "B" },
                 },
                 TriggerMappings = new List<TriggerMapping>()
             };

@@ -19,10 +19,7 @@ public partial class MainPage : ContentPage
     {
         InitializeComponent();
         var configsPath = Path.Combine(FileSystem.AppDataDirectory, "configs");
-        if (!Directory.Exists(configsPath))
-        {
-            Directory.CreateDirectory(configsPath);
-        }
+        BundledConfigService.CopyBundledConfigsIfMissing(configsPath);
         SetConfigFolder(configsPath);
         RefreshList();
         BtnDongle.IsVisible = DeviceInfo.Platform == DevicePlatform.Android;

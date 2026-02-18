@@ -1,0 +1,46 @@
+{
+  "name": "Racing Wheel",
+  "processNames": [
+    "pCARS64",
+    "AssettoCorsa"
+  ],
+  "axisMappings": [
+    {
+      "tracker": "RIGHT_HAND",
+      "source": "EulerZ",
+      "scale": 0.2,
+      "invert": false,
+      "axis": "LeftThumbX",
+      "deadzone": 0.0
+    }
+  ],
+  "buttonMappings": [],
+  "triggerMappings": [
+    {
+      "fixedValue": null,
+      "tracker": "RIGHT_FOOT",
+      "source": "EulerX",
+      "scale": 1.0,
+      "invert": true,
+      "condition": null,
+      "trigger": "RightTrigger",
+      "valueWhenTrue": 255,
+      "valueWhenFalse": 0,
+      "deadzone": 0.0
+    },
+    {
+      "fixedValue": null,
+      "tracker": "LEFT_FOOT",
+      "source": "EulerX",
+      "scale": 1.0,
+      "invert": true,
+      "condition": null,
+      "trigger": "LeftTrigger",
+      "valueWhenTrue": 255,
+      "valueWhenFalse": 0,
+      "deadzone": 0.0
+    }
+  ],
+  "trackers": null,
+  "menuModeToggle": null
+}

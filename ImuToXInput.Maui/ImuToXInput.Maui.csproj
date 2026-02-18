@@ -47,4 +47,9 @@
     <Compile Remove="Platforms\Windows\**\*.cs" />
     <None Include="Platforms\Windows\**\*.cs" />
   </ItemGroup>
+
+  <!-- Bundled configs: copied to app config folder on first run if missing -->
+  <ItemGroup>
+    <EmbeddedResource Include="BundledConfigs\*.json" />
+  </ItemGroup>
 </Project>

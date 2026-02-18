@@ -1,0 +1,14 @@
+{
+  "name": "Menu",
+  "processNames": null,
+  "axisMappings": [
+    { "tracker": "HEAD", "source": "EulerX", "scale": 2, "invert": true, "axis": "LeftThumbY" },
+    { "tracker": "HEAD", "source": "EulerY", "scale": 1, "invert": true, "axis": "LeftThumbX" }
+  ],
+  "buttonMappings": [
+    { "condition": { "type": "euler_threshold", "tracker": "RIGHT_FOOT", "component": "X", "op": "less_than", "value": -20 }, "button": "A" },
+    { "condition": { "type": "euler_threshold", "tracker": "LEFT_FOOT", "component": "X", "op": "less_than", "value": -20 }, "button": "B" }
+  ],
+  "triggerMappings": [],
+  "trackers": null
+}

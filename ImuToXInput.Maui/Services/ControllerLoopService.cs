@@ -57,10 +57,7 @@ public static partial class ControllerLoopService
         }
 
         _configDirectory = Path.Combine(FileSystem.AppDataDirectory, "configs");
-        if (!Directory.Exists(_configDirectory))
-        {
-            Directory.CreateDirectory(_configDirectory);
-        }
+        BundledConfigService.CopyBundledConfigsIfMissing(_configDirectory);
 
         _loadedConfig = ConfigLoader.LoadFromDirectory(_configDirectory);
         _cachedMenuProfile = ConfigLoader.GetMenuProfile(_configDirectory);

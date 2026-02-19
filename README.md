@@ -11,6 +11,8 @@ Stepmania controls give you a virtual invisible dance pad laid out like the foll
 
 <img width="185" height="149" alt="image" src="https://github.com/user-attachments/assets/3b67304e-48f4-4558-a213-60100c6cd37d" />
 
+Custom Configurations:
+Easily create custom bindings and share config files with eachother!
 
 How to use:
 
@@ -22,5 +24,5 @@ https://slimevr.dev/
 
 Connect and calibrate trackers in the SlimeVR software, and follow calibration steps.
 
-Run ImuToXInput after calibrating in SlimeVR, remain in neutral position until fully loaded (Re-calibrating SlimeVR requires re-starting ImuToXInput afterwards):
+Run ImuToXInput and use an existing mapping .json, or create a new one, then play!
 https://github.com/Sebane1/ImuToXinput/releases

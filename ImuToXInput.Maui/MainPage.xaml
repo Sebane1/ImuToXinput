@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ImuToXInput.Maui.MainPage"
+             Title="ImuToXInput - Game profiles">
+    <ScrollView>
+        <VerticalStackLayout Spacing="16">
+            <VerticalStackLayout.Padding>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="Android" Value="20,80,20,20" />
+                    <On Platform="WinUI" Value="20" />
+                    <On Platform="Default" Value="20" />
+                </OnPlatform>
+            </VerticalStackLayout.Padding>
+            <Border x:Name="BorderActiveProfile" Stroke="#ccc" StrokeThickness="1" Padding="16" IsVisible="False">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Active profile (for mapping)" FontAttributes="Bold" FontSize="12"
+                           TextColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />
+                    <Label x:Name="LblActiveProfile" Text="None" FontAttributes="Bold" FontSize="18" LineBreakMode="TailTruncation"
+                           TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+                    <Label Text="Used when game can't be auto-detected on this device." FontSize="11"
+                           TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray200}}" />
+                    <Button x:Name="BtnSetActiveProfile" Text="Change active profile…" Clicked="OnSetActiveProfileClicked" />
+                </VerticalStackLayout>
+            </Border>
+            <Border x:Name="BorderDancePad" Stroke="#ccc" StrokeThickness="1" Padding="16" IsVisible="False">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <VerticalStackLayout Grid.Column="0" Spacing="4" VerticalOptions="Center">
+                        <Label Text="Dance pad / StepMania mode" FontAttributes="Bold" FontSize="14"
+                               TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+                        <Label Text="Map feet to pad arrows (Up/Down/Left/Right) and corners (A/B/X/Y)." FontSize="11"
+                               TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray200}}" />
+                    </VerticalStackLayout>
+                    <Switch x:Name="SwitchDancePad" Grid.Column="1" VerticalOptions="Center"
+                            Toggled="OnDancePadToggled" />
+                </Grid>
+            </Border>
+            <Border x:Name="BorderMenuMode" Stroke="#ccc" StrokeThickness="1" Padding="16" IsVisible="False">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <VerticalStackLayout Grid.Column="0" Spacing="4" VerticalOptions="Center">
+                        <Label Text="Menu mode" FontAttributes="Bold" FontSize="14"
+                               TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+                        <Label Text="Uses menu.json profile. Sticks snap to neutral after 0.5s hold. Toggles on 2nd tracker reset (within 15s)." FontSize="11"
+                               TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray200}}" />
+                        <Label Text="By default, uses head tracker to move selection, left foot tilted forward to go back, right foot tilted forward to select." FontSize="11"
+                               TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray200}}" />
+                    </VerticalStackLayout>
+                    <Switch x:Name="SwitchMenuMode" Grid.Column="1" VerticalOptions="Center"
+                            Toggled="OnMenuModeToggled" />
+                </Grid>
+            </Border>
+            <Border x:Name="BorderProfileInUse" Stroke="#ccc" StrokeThickness="1" Padding="16" IsVisible="False">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Profile in use" FontAttributes="Bold" FontSize="12"
+                           TextColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />
+                    <Label x:Name="LblProfileInUse" Text="—" FontAttributes="Bold" FontSize="16" LineBreakMode="TailTruncation"
+                           TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+                    <Label x:Name="LblProfileInUseDetail" Text="Auto-selected from running game or default." FontSize="11"
+                           TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray200}}" />
+                </VerticalStackLayout>
+            </Border>
+            <Border Stroke="#ccc" StrokeThickness="1" Padding="12">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Config folder" FontAttributes="Bold" FontSize="14" />
+                    <Label x:Name="LblFolder" Text="(not set)" LineBreakMode="TailTruncation" FontSize="12" TextColor="#555" />
+                    <Button x:Name="BtnBrowse" Text="Browse config folder" Clicked="OnBrowseClicked" />
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="Profiles" FontAttributes="Bold" FontSize="16" />
+            <Border Stroke="#ccc" StrokeThickness="1" Padding="0">
+                <CollectionView x:Name="ListConfigs" SelectionMode="Single" SelectionChanged="OnProfileSelected"
+                                MinimumHeightRequest="200" MaximumHeightRequest="400">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <Grid Padding="14,10" ColumnDefinitions="*,Auto">
+                                <Label Text="{Binding}" FontSize="15" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                                <Label Grid.Column="1" Text="›" FontSize="18" TextColor="#888" VerticalOptions="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Border>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Button x:Name="BtnNew" Text="New profile" Clicked="OnNewClicked" Grid.Column="0" />
+                <Button x:Name="BtnEdit" Text="Edit selected" Clicked="OnEditClicked" Grid.Column="1" />
+            </Grid>
+            <Button x:Name="BtnDongle" Text="Joypad WiFi" Clicked="OnDongleClicked" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

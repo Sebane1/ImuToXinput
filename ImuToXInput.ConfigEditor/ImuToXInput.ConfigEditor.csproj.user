@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup />
+  <ItemGroup>
+    <Compile Update="ConditionEditDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="GameProfileEditorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="TriggerAxisDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="TriggerConditionValuesDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="TriggerFixedValueDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
+</Project>

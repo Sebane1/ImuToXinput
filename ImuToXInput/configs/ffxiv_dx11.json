@@ -1,0 +1,23 @@
+{
+  "name": "FFXIV",
+  "processNames": [ "ffxiv_dx11" ],
+  "trackers": [ "LEFT_FOOT", "RIGHT_FOOT" ],
+  "axisMappings": [
+    { "tracker": "HIP", "source": "EulerZ", "scale": 1, "invert": false, "axis": "LeftThumbX" },
+    { "tracker": "HIP", "source": "EulerX", "scale": 1, "invert": true, "axis": "LeftThumbY" }
+  ],
+  "buttonMappings": [
+    { "condition": { "type": "position_threshold", "tracker": "RIGHT_LOWER_ARM", "source": "FloorRelY", "op": "greater_than", "value": 0.1 }, "button": "Y" },
+    { "condition": { "type": "position_threshold", "tracker": "RIGHT_LOWER_ARM", "source": "FloorRelY", "op": "less_than", "value": -0.02 }, "button": "A" },
+    { "condition": { "type": "position_threshold", "tracker": "RIGHT_LOWER_ARM", "source": "FloorRelZ", "op": "greater_than", "value": 0.1 }, "button": "B" },
+    { "condition": { "type": "position_threshold", "tracker": "RIGHT_LOWER_ARM", "source": "FloorRelZ", "op": "less_than", "value": -0.1 }, "button": "X" },
+    { "condition": { "type": "position_threshold", "tracker": "LEFT_UPPER_ARM", "source": "FloorRelY", "op": "greater_than", "value": 0.01 }, "button": "Up" },
+    { "condition": { "type": "position_threshold", "tracker": "LEFT_UPPER_ARM", "source": "FloorRelY", "op": "less_than", "value": -0.02 }, "button": "Down" },
+    { "condition": { "type": "position_threshold", "tracker": "LEFT_UPPER_ARM", "source": "FloorRelZ", "op": "greater_than", "value": 0.01 }, "button": "Left" },
+    { "condition": { "type": "position_threshold", "tracker": "LEFT_UPPER_ARM", "source": "FloorRelZ", "op": "less_than", "value": -0.01 }, "button": "Right" }
+  ],
+  "triggerMappings": [
+    { "condition": { "type": "euler_threshold", "tracker": "LEFT_FOOT", "component": "Y", "op": "greater_than", "value": 15 }, "trigger": "LeftTrigger", "valueWhenTrue": 255, "valueWhenFalse": 0 },
+    { "condition": { "type": "euler_threshold", "tracker": "RIGHT_FOOT", "component": "Y", "op": "less_than", "value": -15 }, "trigger": "RightTrigger", "valueWhenTrue": 255, "valueWhenFalse": 0 }
+  ]
+}

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ImuToXInput.Maui.ProfileEditorPage"
+             x:Name="ThisPage"
+             Title="Edit profile">
+    <ContentPage.Resources>
+        <Style TargetType="Button" x:Key="CompactButton">
+            <Setter Property="MinimumHeightRequest" Value="22" />
+            <Setter Property="Padding" Value="10,2" />
+            <Setter Property="VerticalOptions" Value="Center" />
+        </Style>
+    </ContentPage.Resources>
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <!-- General -->
+            <Label Text="General" FontAttributes="Bold" FontSize="18" />
+            <Label Text="Profile name" />
+            <Entry x:Name="TxtName" Placeholder="Profile name" MinimumHeightRequest="28" />
+            <Label Text="Process names (game .exe without extension)" />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <Entry x:Name="TxtProcessName" Placeholder="process1" Grid.Column="0" MinimumHeightRequest="28" VerticalOptions="Center" />
+                <Button x:Name="BtnAddProcessName" Text="Add" Grid.Column="1" Clicked="OnAddProcessNameClicked" Style="{StaticResource CompactButton}" />
+                <Button x:Name="BtnRemoveProcessName" Text="Remove" Grid.Column="2" Clicked="OnRemoveProcessNameClicked" Style="{StaticResource CompactButton}" />
+            </Grid>
+            <CollectionView x:Name="ListProcessNames" HeightRequest="80" SelectionMode="Single" />
+
+            <VerticalStackLayout x:Name="PrimaryProfileSection" IsVisible="False" Spacing="8">
+                <Label Text="Primary profile (when multiple profiles target the same game)" FontAttributes="Bold" />
+                <VerticalStackLayout x:Name="PrimaryProfileButtons" Spacing="4" />
+            </VerticalStackLayout>
+
+            <Label Text="Trackers (for floor-relative position)" />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <Picker x:Name="CmbFloorTracker" Title="Tracker" Grid.Column="0" MinimumHeightRequest="28" VerticalOptions="Center" />
+                <Button x:Name="BtnAddFloorTracker" Text="Add" Grid.Column="1" Clicked="OnAddFloorTrackerClicked" Style="{StaticResource CompactButton}" />
+                <Button x:Name="BtnRemoveFloorTracker" Text="Remove" Grid.Column="2" Clicked="OnRemoveFloorTrackerClicked" Style="{StaticResource CompactButton}" />
+            </Grid>
+            <CollectionView x:Name="ListFloorTrackers" HeightRequest="60" SelectionMode="Single" />
+
+            <!-- Axis mappings -->
+            <Label Text="Axis mappings" FontAttributes="Bold" FontSize="18" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <Button x:Name="BtnAddAxis" Text="Add axis" Grid.Column="0" Clicked="OnAddAxisClicked" Style="{StaticResource CompactButton}" />
+                <Button x:Name="BtnRemoveAxis" Text="Remove selected" Grid.Column="1" Clicked="OnRemoveAxisClicked" Style="{StaticResource CompactButton}" />
+            </Grid>
+            <!-- Single grid: row 0 = header, row 1+ = data (ensures columns align) -->
+            <Grid x:Name="AxisGrid" ColumnDefinitions="100,90,56,56,90,100,40" ColumnSpacing="8" RowSpacing="6" Margin="0,6,0,0" />
+
+            <!-- Button mappings -->
+            <Label Text="Button mappings" FontAttributes="Bold" FontSize="18" />
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                <Picker x:Name="CmbButton" Title="Button" Grid.Column="0" MinimumHeightRequest="28" VerticalOptions="Center" />
+                <Button x:Name="BtnAddButton" Text="Add" Grid.Column="1" Clicked="OnAddButtonClicked" Style="{StaticResource CompactButton}" />
+                <Button x:Name="BtnEditButton" Text="Edit" Grid.Column="2" Clicked="OnEditButtonClicked" Style="{StaticResource CompactButton}" />
+                <Button x:Name="BtnRemoveButton" Text="Remove" Grid.Column="3" Clicked="OnRemoveButtonClicked" Style="{StaticResource CompactButton}" />
+            </Grid>
+            <CollectionView x:Name="ListButtons" HeightRequest="120" SelectionMode="Single" />
+
+            <!-- Trigger mappings -->
+            <Label Text="Trigger mappings" FontAttributes="Bold" FontSize="18" />
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                <Picker x:Name="CmbTrigger" Title="Trigger" Grid.Column="0" MinimumHeightRequest="28" VerticalOptions="Center" />
+                <Button x:Name="BtnAddTrigger" Text="Add" Grid.Column="1" Clicked="OnAddTriggerClicked" Style="{StaticResource CompactButton}" />
+                <Button x:Name="BtnEditTrigger" Text="Edit" Grid.Column="2" Clicked="OnEditTriggerClicked" Style="{StaticResource CompactButton}" />
+                <Button x:Name="BtnRemoveTrigger" Text="Remove" Grid.Column="3" Clicked="OnRemoveTriggerClicked" Style="{StaticResource CompactButton}" />
+            </Grid>
+            <CollectionView x:Name="ListTriggers" HeightRequest="100" SelectionMode="Single" />
+
+            <!-- Menu mode toggle: gesture toggles menu mode -->
+            <VerticalStackLayout Spacing="8">
+                <Label Text="Menu mode toggle (gesture toggles menu mode allowing for easier navigation)" FontAttributes="Bold" FontSize="18" />
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                    <Label x:Name="LblMenuModeToggle" Text="Not set" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                    <Button x:Name="BtnSetMenuModeToggle" Text="Set gesture" Grid.Column="1" Clicked="OnSetMenuModeToggleClicked" Style="{StaticResource CompactButton}" />
+                    <Button x:Name="BtnClearMenuModeToggle" Text="Clear" Grid.Column="2" Clicked="OnClearMenuModeToggleClicked" Style="{StaticResource CompactButton}" />
+                </Grid>
+            </VerticalStackLayout>
+
+            <!-- Script: single WebView with textarea (no CDN = always visible and clickable) -->
+            <Label Text="Script (axis/button/trigger)" FontAttributes="Bold" FontSize="18" />
+            <VerticalStackLayout Spacing="8">
+                <Border Stroke="#808080" StrokeThickness="1" Background="#FFF8F0" Padding="0">
+                    <WebView x:Name="ScriptWebView" HeightRequest="380" MinimumHeightRequest="200" />
+                </Border>
+                <HorizontalStackLayout Spacing="12">
+                    <Button x:Name="BtnRefreshFromForm" Text="Refresh from form" Clicked="OnRefreshFromFormClicked" Style="{StaticResource CompactButton}" />
+                    <Button x:Name="BtnApplyScript" Text="Apply script" Clicked="OnApplyScriptClicked" Style="{StaticResource CompactButton}" />
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+
+            <Button x:Name="BtnSave" Text="Save" Clicked="OnSaveClicked" Margin="0,20,0,0" Style="{StaticResource CompactButton}" />
+            <Button x:Name="BtnCancel" Text="Cancel" Clicked="OnCancelClicked" Style="{StaticResource CompactButton}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

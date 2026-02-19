@@ -1,0 +1,136 @@
+{
+  "name": "default",
+  "processNames": null,
+  "axisMappings": [
+    {
+      "tracker": "HEAD",
+      "source": "EulerX",
+      "scale": 2.0,
+      "invert": true,
+      "axis": "RightThumbY"
+    },
+    {
+      "tracker": "HEAD",
+      "source": "EulerY",
+      "scale": 1.0,
+      "invert": true,
+      "axis": "RightThumbX"
+    },
+    {
+      "tracker": "HIP",
+      "source": "EulerZ",
+      "scale": 2.0,
+      "invert": false,
+      "axis": "LeftThumbX"
+    },
+    {
+      "tracker": "HIP",
+      "source": "EulerX",
+      "scale": 2.0,
+      "invert": true,
+      "axis": "LeftThumbY"
+    }
+  ],
+  "buttonMappings": [
+    {
+      "condition": {
+        "type": "euler_diff",
+        "trackerA": "RIGHT_UPPER_ARM",
+        "trackerB": "CHEST",
+        "component": "Y",
+        "op": "greater_than",
+        "value": 30.0
+      },
+      "button": "B"
+    },
+    {
+      "condition": {
+        "type": "euler_threshold",
+        "tracker": "LEFT_FOOT",
+        "component": "X",
+        "op": "less_than",
+        "value": -20.0
+      },
+      "button": "A"
+    },
+    {
+      "condition": {
+        "type": "euler_threshold",
+        "tracker": "RIGHT_FOOT",
+        "component": "X",
+        "op": "less_than",
+        "value": -20.0
+      },
+      "button": "A"
+    },
+    {
+      "condition": {
+        "type": "euler_threshold",
+        "tracker": "LEFT_FOOT",
+        "component": "Z",
+        "op": "greater_than",
+        "value": -20.0
+      },
+      "button": "Y"
+    },
+    {
+      "condition": {
+        "type": "euler_threshold",
+        "tracker": "RIGHT_FOOT",
+        "component": "Z",
+        "op": "greater_than",
+        "value": 20.0
+      },
+      "button": "X"
+    },
+    {
+      "condition": {
+        "type": "euler_threshold",
+        "tracker": "LEFT_FOOT",
+        "component": "Y",
+        "op": "greater_than",
+        "value": 5.0
+      },
+      "button": "LeftShoulder"
+    },
+    {
+      "condition": {
+        "type": "euler_threshold",
+        "tracker": "RIGHT_FOOT",
+        "component": "Y",
+        "op": "less_than",
+        "value": -5.0
+      },
+      "button": "RightShoulder"
+    }
+  ],
+  "triggerMappings": [
+    {
+      "condition": {
+        "type": "euler_sum",
+        "trackerA": "RIGHT_UPPER_ARM",
+        "trackerB": "CHEST",
+        "component": "Y",
+        "op": "less_than",
+        "value": -15.0
+      },
+      "trigger": "RightTrigger",
+      "valueWhenTrue": 255,
+      "valueWhenFalse": 0
+    },
+    {
+      "condition": {
+        "type": "euler_diff",
+        "trackerA": "LEFT_UPPER_ARM",
+        "trackerB": "CHEST",
+        "component": "Y",
+        "op": "less_than",
+        "value": -20.0
+      },
+      "trigger": "LeftTrigger",
+      "valueWhenTrue": 255,
+      "valueWhenFalse": 0
+    }
+  ],
+  "trackers": null
+}

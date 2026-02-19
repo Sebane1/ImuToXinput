@@ -1,0 +1,19 @@
+{
+  "name": "MirrorsEdge",
+  "processNames": [ "MirrorsEdge" ],
+  "axisMappings": [
+    { "tracker": "HEAD", "source": "EulerX", "scale": 2, "invert": true, "axis": "RightThumbY" },
+    { "tracker": "HEAD", "source": "EulerY", "scale": 1, "invert": true, "axis": "RightThumbX" },
+    { "tracker": "HIP", "source": "EulerY", "scale": 2, "invert": false, "axis": "LeftThumbX" },
+    { "tracker": "HIP", "source": "EulerX", "scale": 2, "invert": true, "axis": "LeftThumbY" }
+  ],
+  "buttonMappings": [
+    { "condition": { "type": "euler_sum", "trackerA": "RIGHT_UPPER_ARM", "trackerB": "CHEST", "component": "Z", "op": "less_than", "value": -30 }, "button": "Y" },
+    { "condition": { "type": "euler_threshold", "tracker": "LEFT_FOOT", "component": "X", "op": "less_than", "value": -20 }, "button": "LeftShoulder" },
+    { "condition": { "type": "euler_threshold", "tracker": "RIGHT_FOOT", "component": "X", "op": "less_than", "value": -20 }, "button": "RightShoulder" }
+  ],
+  "triggerMappings": [
+    { "condition": { "type": "euler_diff", "trackerA": "RIGHT_UPPER_ARM", "trackerB": "CHEST", "component": "Z", "op": "greater_than", "value": 30 }, "trigger": "RightTrigger", "valueWhenTrue": 255, "valueWhenFalse": 0 },
+    { "condition": { "type": "euler_diff", "trackerA": "LEFT_UPPER_ARM", "trackerB": "CHEST", "component": "Z", "op": "less_than", "value": -30 }, "trigger": "LeftTrigger", "valueWhenTrue": 255, "valueWhenFalse": 0 }
+  ]
+}

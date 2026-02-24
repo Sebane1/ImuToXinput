@@ -3,4 +3,15 @@
   <application android:allowBackup="true" android:hardwareAccelerated="false" android:supportsRtl="true" />
   <!-- Joypad WiFi (JOCP): UDP to dongle -->
   <uses-permission android:name="android.permission.INTERNET" />
+  <!-- Keep CPU running for controller loop when screen is off -->
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <!-- JOCP rumble from dongle → device vibration -->
+  <uses-permission android:name="android.permission.VIBRATE" />
+  <!-- BLE: ESP32 proxy (scan + connect). Android 12+ uses BLUETOOTH_SCAN / BLUETOOTH_CONNECT -->
+  <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <!-- BLE scan on Android 10 and below often needs location for results -->
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
 </manifest>

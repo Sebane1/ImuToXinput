@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:ImuToXInput.Maui"
              x:Class="ImuToXInput.Maui.DongleConnectPage"
              Title="Joypad WiFi">
     <ScrollView>
@@ -12,23 +13,47 @@
                     <On Platform="Default" Value="20" />
                 </OnPlatform>
             </VerticalStackLayout.Padding>
-            <Label Text="Send controller input to Joypad OS over WiFi (JOCP)." FontSize="14" TextColor="#555" />
-            <Label x:Name="LblJocpStatus" Text="Not connected" FontSize="14" TextColor="#555" />
+            <Label Text="Send controller input to Joypad OS (JOCP)." FontSize="14" TextColor="#555" />
+            <!-- Mode: Direct (phone on dongle WiFi) or Via ESP32 proxy -->
             <VerticalStackLayout Spacing="8">
-                <Label Text="Host (e.g. 192.168.4.1)" FontSize="12" TextColor="#666" />
-                <Entry x:Name="EntryJocpHost" Placeholder="192.168.4.1" Keyboard="Numeric" Text="192.168.4.1"
-                       HeightRequest="48" />
+                <Label Text="Connection" FontSize="12" TextColor="#666" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Button x:Name="BtnModeDirect" Text="Phone on dongle WiFi" Clicked="OnModeDirectClicked" />
+                    <Button x:Name="BtnModeEsp32" Text="Via ESP32 proxy" Clicked="OnModeEsp32Clicked" />
+                </Grid>
             </VerticalStackLayout>
-            <VerticalStackLayout Spacing="8">
+            <Label x:Name="LblJocpStatus" Text="Not connected" FontSize="14" TextColor="#555" />
+            <!-- Direct: host/port -->
+            <VerticalStackLayout x:Name="PanelDirect" Spacing="8">
+                <Label Text="Host (e.g. 192.168.4.1)" FontSize="12" TextColor="#666" />
+                <Entry x:Name="EntryJocpHost" Placeholder="192.168.4.1" Keyboard="Default" Text="192.168.4.1"
+                       HeightRequest="48" />
                 <Label Text="Port" FontSize="12" TextColor="#666" />
                 <Entry x:Name="EntryJocpPort" Placeholder="30100" Keyboard="Numeric" Text="30100"
                        HeightRequest="48" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Button x:Name="BtnJocpConnect" Text="Connect" Clicked="OnJocpConnectClicked" />
+                    <Button x:Name="BtnJocpDisconnect" Text="Disconnect" Clicked="OnJocpDisconnectClicked" IsVisible="False" />
+                </Grid>
+                <Label x:Name="LblJocpHint" Text="Connect phone to the dongle's WiFi (SSID like JOYPAD-XXXX, password slimevr1), then enter dongle IP (often 192.168.4.1) and Connect." FontSize="12" TextColor="#888" />
             </VerticalStackLayout>
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                <Button x:Name="BtnJocpConnect" Text="Connect" Clicked="OnJocpConnectClicked" />
-                <Button x:Name="BtnJocpDisconnect" Text="Disconnect" Clicked="OnJocpDisconnectClicked" IsVisible="False" />
-            </Grid>
-            <Label x:Name="LblJocpHint" Text="Connect phone to Joypad's WiFi AP, then enter dongle IP (often 192.168.4.1) and Connect." FontSize="12" TextColor="#888" />
+            <!-- ESP32 proxy: scan + device list -->
+            <VerticalStackLayout x:Name="PanelEsp32" Spacing="8" IsVisible="False">
+                <Label Text="ESP32 joins the dongle's WiFi (SSID like JOYPAD-XXXX, password slimevr1) and forwards input. Phone stays on cellular or your WiFi." FontSize="12" TextColor="#666" />
+                <Button x:Name="BtnEsp32Scan" Text="Scan for ESP32" Clicked="OnEsp32ScanClicked" />
+                <CollectionView x:Name="ListEsp32Devices" SelectionMode="Single" SelectionChanged="OnEsp32DeviceSelected"
+                               MinimumHeightRequest="120" MaximumHeightRequest="200">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="local:Esp32DeviceRow">
+                            <Label Text="{Binding Display}" FontSize="14" Padding="8,4" LineBreakMode="TailTruncation" />
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Button x:Name="BtnEsp32Connect" Text="Connect to selected" Clicked="OnEsp32ConnectClicked" IsEnabled="False" />
+                    <Button x:Name="BtnEsp32Disconnect" Text="Disconnect" Clicked="OnEsp32DisconnectClicked" IsVisible="False" />
+                </Grid>
+            </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

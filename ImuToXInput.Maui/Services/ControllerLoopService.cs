@@ -7,6 +7,7 @@ namespace ImuToXInput.Maui.Services;
 /// <summary>
 /// Runs the controller mapping loop: SlimeVR trackers → config/profile → gamepad output (BLE on Android, ViGEm on Windows).
 /// Set <see cref="GetOutput"/> from platform code; then call <see cref="Start"/> (e.g. from App).
+/// On Android the loop runs on a background thread so it continues when the app is in the background.
 /// </summary>
 public static partial class ControllerLoopService
 {
@@ -15,10 +16,13 @@ public static partial class ControllerLoopService
     /// <summary>Platform provides the gamepad output (BleGamepadOutput on Android, ViGEm on Windows). Set in platform partial.</summary>
     public static Func<IGamepadOutput?>? GetOutput { get; set; }
 
+    /// <summary>When set (Android), creates a loop that runs off the UI thread so mapping continues when app is backgrounded. (intervalMs, tick).</summary>
+    public static Func<int, Action, IDisposable>? CreateLoopTimer { get; set; }
+
     private static SlimeVRClient? _slimeVRClient;
     private static LoadedConfig? _loadedConfig;
     private static string _configDirectory = "";
-    private static IDispatcherTimer? _timer;
+    private static IDisposable? _loopRunner;
     private static bool _running;
     private static string? _cachedActiveFileName;
     private static GameProfile? _cachedActiveProfile;
@@ -83,83 +87,97 @@ public static partial class ControllerLoopService
             }
         };
         _slimeVRClient.Start();
-        var trackers = _slimeVRClient.Trackers;
 
-        _timer = dispatcher.CreateTimer();
-        _timer.Interval = TimeSpan.FromMilliseconds(UpdateIntervalMs);
-        _timer.Tick += OnTick;
-        _timer.Start();
-        _running = true;
-
-        void OnTick(object? sender, EventArgs e)
+        if (CreateLoopTimer != null)
         {
-            if (trackers == null || output == null) return;
+            _loopRunner = CreateLoopTimer(UpdateIntervalMs, RunOneTick);
+        }
+        else
+        {
+            var timer = dispatcher.CreateTimer();
+            timer.Interval = TimeSpan.FromMilliseconds(UpdateIntervalMs);
+            timer.Tick += (_, _) => RunOneTick();
+            timer.Start();
+            _loopRunner = new DispatcherTimerRunner(timer);
+        }
+        _running = true;
+    }
 
-            var overrideMode = Preferences.Default.Get(ImuToXInput.Maui.MainPage.OverrideGameModePreferenceKey, (string?)null);
-            GameProfile? activeOverride = null;
-            // When dance pad / StepMania mode is on, don't use active profile; runner will use StepMania mapping.
-            if (string.IsNullOrEmpty(overrideMode) || !string.Equals(overrideMode, "stepmania", StringComparison.OrdinalIgnoreCase))
+    private static void RunOneTick()
+    {
+        var trackers = _slimeVRClient?.Trackers;
+        var output = GetOutput?.Invoke();
+        if (trackers == null || output == null || _loadedConfig == null) return;
+
+        var overrideMode = Preferences.Default.Get(ImuToXInput.Maui.MainPage.OverrideGameModePreferenceKey, (string?)null);
+        GameProfile? activeOverride = null;
+        if (string.IsNullOrEmpty(overrideMode) || !string.Equals(overrideMode, "stepmania", StringComparison.OrdinalIgnoreCase))
+        {
+            var activeFileName = Preferences.Default.Get(ImuToXInput.Maui.MainPage.ActiveProfilePreferenceKey, (string?)null);
+            if (!string.IsNullOrEmpty(activeFileName))
             {
-                var activeFileName = Preferences.Default.Get(ImuToXInput.Maui.MainPage.ActiveProfilePreferenceKey, (string?)null);
-                if (!string.IsNullOrEmpty(activeFileName))
+                var path = Path.Combine(_configDirectory, activeFileName);
+                var needsLoad = activeFileName != _cachedActiveFileName || (_cachedActiveProfile == null && File.Exists(path));
+                if (needsLoad)
                 {
-                    var path = Path.Combine(_configDirectory, activeFileName);
-                    var needsLoad = activeFileName != _cachedActiveFileName || (_cachedActiveProfile == null && File.Exists(path));
-                    if (needsLoad)
-                    {
-                        _cachedActiveFileName = activeFileName;
-                        _cachedActiveProfile = null;
-                        if (File.Exists(path))
-                        {
-                            try
-                            {
-                                var json = File.ReadAllText(path);
-                                _cachedActiveProfile = Newtonsoft.Json.JsonConvert.DeserializeObject<GameProfile>(json);
-                            }
-                            catch { /* keep null */ }
-                        }
-                    }
-                    activeOverride = _cachedActiveProfile;
-                }
-                else
-                {
-                    _cachedActiveFileName = null;
+                    _cachedActiveFileName = activeFileName;
                     _cachedActiveProfile = null;
+                    if (File.Exists(path))
+                    {
+                        try
+                        {
+                            var json = File.ReadAllText(path);
+                            _cachedActiveProfile = Newtonsoft.Json.JsonConvert.DeserializeObject<GameProfile>(json);
+                        }
+                        catch { /* keep null */ }
+                    }
                 }
-            }
-
-            // Resolve running game for display and for runner: StepMania override, or detected process
-            string? runningGame = string.Equals(overrideMode, "stepmania", StringComparison.OrdinalIgnoreCase)
-                ? "stepmania"
-                : (GetProcessName?.Invoke(_loadedConfig) ?? null);
-
-            if (activeOverride != null)
-            {
-                _currentProfileFileName = _cachedActiveFileName;
-                _currentProcessName = null;
-                _currentIsOverride = true;
-                _currentIsStepMania = false;
-            }
-            else if (string.Equals(runningGame, "stepmania", StringComparison.OrdinalIgnoreCase))
-            {
-                _currentProfileFileName = null;
-                _currentProcessName = "stepmania";
-                _currentIsOverride = false;
-                _currentIsStepMania = true;
+                activeOverride = _cachedActiveProfile;
             }
             else
             {
-                var (_, fileName) = ConfigLoader.GetProfileAndFileNameForProcess(_loadedConfig, runningGame);
-                _currentProfileFileName = fileName;
-                _currentProcessName = runningGame;
-                _currentIsOverride = false;
-                _currentIsStepMania = false;
+                _cachedActiveFileName = null;
+                _cachedActiveProfile = null;
             }
-
-            var menuMode = Preferences.Default.Get(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, false);
-            _menuModeState ??= new ThumbstickMenuModeState();
-            ControllerMappingRunner.Update(trackers, output, _loadedConfig, () => runningGame, activeOverride, menuMode, menuMode ? _cachedMenuProfile : null, menuMode ? _menuModeState : null);
         }
+
+        string? runningGame = string.Equals(overrideMode, "stepmania", StringComparison.OrdinalIgnoreCase)
+            ? "stepmania"
+            : (GetProcessName?.Invoke(_loadedConfig) ?? null);
+
+        if (activeOverride != null)
+        {
+            _currentProfileFileName = _cachedActiveFileName;
+            _currentProcessName = null;
+            _currentIsOverride = true;
+            _currentIsStepMania = false;
+        }
+        else if (string.Equals(runningGame, "stepmania", StringComparison.OrdinalIgnoreCase))
+        {
+            _currentProfileFileName = null;
+            _currentProcessName = "stepmania";
+            _currentIsOverride = false;
+            _currentIsStepMania = true;
+        }
+        else
+        {
+            var (_, fileName) = ConfigLoader.GetProfileAndFileNameForProcess(_loadedConfig, runningGame);
+            _currentProfileFileName = fileName;
+            _currentProcessName = runningGame;
+            _currentIsOverride = false;
+            _currentIsStepMania = false;
+        }
+
+        var menuMode = Preferences.Default.Get(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, false);
+        _menuModeState ??= new ThumbstickMenuModeState();
+        ControllerMappingRunner.Update(trackers, output, _loadedConfig, () => runningGame, activeOverride, menuMode, menuMode ? _cachedMenuProfile : null, menuMode ? _menuModeState : null);
+    }
+
+    private sealed class DispatcherTimerRunner : IDisposable
+    {
+        private readonly IDispatcherTimer _timer;
+        public DispatcherTimerRunner(IDispatcherTimer timer) => _timer = timer;
+        public void Dispose() => _timer.Stop();
     }
 
     /// <summary>Stop the timer and release resources. Clears controller inputs before stopping.</summary>
@@ -171,8 +189,8 @@ public static partial class ControllerLoopService
         {
             ControllerMappingRunner.ClearInputs(output);
         }
-        _timer?.Stop();
-        _timer = null;
+        _loopRunner?.Dispose();
+        _loopRunner = null;
         _slimeVRClient = null;
         _loadedConfig = null;
         _cachedActiveFileName = null;

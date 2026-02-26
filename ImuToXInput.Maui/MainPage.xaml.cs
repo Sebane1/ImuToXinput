@@ -135,6 +135,7 @@ public partial class MainPage : ContentPage
     private void OnMenuModeToggled(object? sender, ToggledEventArgs e)
     {
         Preferences.Default.Set(MenuModePreferenceKey, e.Value);
+        Services.ControllerLoopService.RequestStartButtonPulse(); // Send Start so game can open/close pause menu
     }
 
     private async void OnSetActiveProfileClicked(object? sender, EventArgs e)

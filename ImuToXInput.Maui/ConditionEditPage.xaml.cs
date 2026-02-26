@@ -6,7 +6,8 @@ namespace ImuToXInput.Maui;
 public partial class ConditionEditPage : ContentPage
 {
     private readonly MappingCondition? _existing;
-    private readonly Action<MappingCondition?> _onComplete;
+    private readonly Action<MappingCondition?>? _onComplete;
+    private readonly Action<MappingCondition?, string>? _onCompleteWithButton;
 
     private Picker? _pickerTracker;
     private Picker? _pickerTrackerA;
@@ -21,7 +22,26 @@ public partial class ConditionEditPage : ContentPage
         InitializeComponent();
         _existing = existing;
         _onComplete = onComplete;
+        _onCompleteWithButton = null;
+        InitCondition();
+    }
 
+    /// <summary>For button mapping: edits condition and lets user choose target button. onCompleteWithButton(condition, button) on OK, (null, null) on Cancel.</summary>
+    public ConditionEditPage(MappingCondition? existing, Action<MappingCondition?, string?> onCompleteWithButton, string? initialButton = null)
+    {
+        InitializeComponent();
+        _existing = existing;
+        _onComplete = null;
+        _onCompleteWithButton = onCompleteWithButton;
+        LblMapToButton.IsVisible = true;
+        PickerMapToButton.IsVisible = true;
+        PickerMapToButton.ItemsSource = ConfigEditorConstants.Buttons;
+        PickerMapToButton.SelectedItem = initialButton ?? (ConfigEditorConstants.Buttons.Length > 0 ? ConfigEditorConstants.Buttons[0] : null);
+        InitCondition();
+    }
+
+    private void InitCondition()
+    {
         PickerType.ItemsSource = ConfigEditorConstants.ConditionTypes;
         PickerType.SelectedIndexChanged += (_, _) => RefreshConditionFields();
 
@@ -141,13 +161,24 @@ public partial class ConditionEditPage : ContentPage
             await DisplayAlert("Error", "Invalid condition.", "OK");
             return;
         }
-        _onComplete(c);
+        if (_onCompleteWithButton != null)
+        {
+            var btn = PickerMapToButton?.SelectedItem?.ToString() ?? "A";
+            _onCompleteWithButton(c, btn);
+        }
+        else
+        {
+            _onComplete!(c);
+        }
         await Navigation.PopModalAsync();
     }
 
     private async void OnCancelClicked(object? sender, EventArgs e)
     {
-        _onComplete(null);
+        if (_onCompleteWithButton != null)
+            _onCompleteWithButton(null, null);
+        else
+            _onComplete!(null);
         await Navigation.PopModalAsync();
     }
 

@@ -64,6 +64,7 @@
     <ProjectReference Include="..\ImuToXInput.Core\ImuToXInput.Core.csproj" />
     <ProjectReference Include="..\SlimeImuProtocol\SlimeImuProtocol.csproj" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Zeroconf" Version="3.7.16" />
   </ItemGroup>
 
   <!-- Exclude platform folders when not building for that platform -->

@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <application android:allowBackup="true" android:hardwareAccelerated="false" android:supportsRtl="true" />
+  <application android:allowBackup="true" android:hardwareAccelerated="false" android:supportsRtl="true">
+    <service android:name="com.imutoxinput.maui.ControllerForegroundService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse">
+      <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Keeps gamepad input active when app is in background." />
+    </service>
+  </application>
   <!-- Joypad WiFi (JOCP): UDP to dongle -->
   <uses-permission android:name="android.permission.INTERNET" />
+  <!-- Foreground service so controller loop keeps running when app is backgrounded -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
   <!-- Keep CPU running for controller loop when screen is off -->
   <uses-permission android:name="android.permission.WAKE_LOCK" />
   <!-- JOCP rumble from dongle → device vibration -->

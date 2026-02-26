@@ -10,12 +10,12 @@ using ImuToXInput.Core.Output;
 namespace ImuToXInput.Maui.Platforms.Android;
 
 /// <summary>
-/// Connects to an ESP32 over BLE and streams the 12-byte Xbox 360 report at ~125 Hz.
-/// The ESP32 joins the JOCPHost WiFi and forwards reports as JOCP UDP to the dongle.
+/// Connects directly to a Joypad dongle over BLE and streams the 12-byte Xbox 360 report at ~125 Hz.
+/// The dongle exposes the JOCP GATT service (report write + feedback notify). No proxy device.
 /// </summary>
-public sealed class JocpBleProxyClient
+public sealed class JocpBleClient
 {
-    public static JocpBleProxyClient? Current { get; set; }
+    public static JocpBleClient? Current { get; set; }
 
     private const int SendIntervalMs = 8;
     private const int ReconnectIntervalMs = 2000;
@@ -39,13 +39,22 @@ public sealed class JocpBleProxyClient
     public string? DeviceAddress { get; private set; }
 
     public event EventHandler<bool>? ConnectionStateChanged;
-    public event EventHandler<IReadOnlyList<BleProxyDevice>>? DevicesDiscovered;
-    /// <summary>Fired when the server sends a rumble notification (feedback characteristic, 6-byte payload).</summary>
+    public event EventHandler<IReadOnlyList<JocpBleDevice>>? DevicesDiscovered;
+    /// <summary>Fired when the dongle sends a rumble notification (feedback characteristic, 6-byte payload).</summary>
     public event EventHandler<JocpRumbleEventArgs>? RumbleReceived;
 
     public void SetReportProvider(Func<byte[]> getReport) => _getReport = getReport;
 
-    /// <summary>Scan for BLE devices advertising the JOCP proxy service. Call from main thread.</summary>
+    private void OnFeedbackPayload(object? value)
+    {
+        byte[]? arr = value is byte[] b ? b : (value as IList<byte>)?.ToArray();
+        if (arr == null || arr.Length < JocpBleConstants.RumblePayloadSize) return;
+        ushort durationMs = (ushort)(arr[4] | (arr[5] << 8));
+        var args = new JocpRumbleEventArgs(arr[0], arr[1], arr[2], arr[3], durationMs);
+        try { RumbleReceived?.Invoke(this, args); } catch { }
+    }
+
+    /// <summary>Scan for BLE devices advertising the JOCP service (Joypad dongles). Call from main thread.</summary>
     public void StartScan(int timeoutMs = 10000)
     {
         Stop();
@@ -58,8 +67,8 @@ public sealed class JocpBleProxyClient
         var scanner = _adapter.BluetoothLeScanner;
         if (scanner == null) return;
 
-        var list = new List<BleProxyDevice>();
-        var serviceUuid = UUID.FromString(JocpBleProxyConstants.ServiceUuid.ToString("D"));
+        var list = new List<JocpBleDevice>();
+        var serviceUuid = UUID.FromString(JocpBleConstants.ServiceUuid.ToString("D"));
         var filterBuilder = new ScanFilter.Builder()?.SetServiceUuid(new ParcelUuid(serviceUuid));
         var filter = filterBuilder?.Build();
         var filters = filter != null ? new List<ScanFilter> { filter } : new List<ScanFilter>();
@@ -76,7 +85,7 @@ public sealed class JocpBleProxyClient
                 {
                     if (list.All(d => d.Address != addr))
                     {
-                        list.Add(new BleProxyDevice(name, addr));
+                        list.Add(new JocpBleDevice(name, addr));
                         DevicesDiscovered?.Invoke(this, list.ToArray());
                     }
                 });
@@ -105,7 +114,7 @@ public sealed class JocpBleProxyClient
         catch { }
     }
 
-    /// <summary>Connect to an ESP32 proxy by address and start streaming. Auto-reconnects on drop until Stop().</summary>
+    /// <summary>Connect to a Joypad dongle by address and start streaming. Auto-reconnects on drop until Stop().</summary>
     public void Connect(string address)
     {
         Stop();
@@ -132,7 +141,7 @@ public sealed class JocpBleProxyClient
             if (device == null) return;
 
             _adapter = adapter;
-            var feedbackCharUuid = UUID.FromString(JocpBleProxyConstants.FeedbackCharacteristicUuid.ToString("D"));
+            var feedbackCharUuid = UUID.FromString(JocpBleConstants.FeedbackCharacteristicUuid.ToString("D"));
             var gattCallback = new GattCallbackImpl(
                 onConnectionStateChange: (gatt, status, newState) =>
                 {
@@ -149,8 +158,8 @@ public sealed class JocpBleProxyClient
                 onServicesDiscovered: (gatt, status) =>
                 {
                     if (status != GattStatus.Success || gatt == null) return;
-                    var serviceUuid = UUID.FromString(JocpBleProxyConstants.ServiceUuid.ToString("D"));
-                    var reportCharUuid = UUID.FromString(JocpBleProxyConstants.ReportCharacteristicUuid.ToString("D"));
+                    var serviceUuid = UUID.FromString(JocpBleConstants.ServiceUuid.ToString("D"));
+                    var reportCharUuid = UUID.FromString(JocpBleConstants.ReportCharacteristicUuid.ToString("D"));
                     var service = gatt.GetService(serviceUuid);
                     var reportChar = service?.GetCharacteristic(reportCharUuid);
                     if (reportChar == null) return;
@@ -160,7 +169,8 @@ public sealed class JocpBleProxyClient
                     {
                         gatt.SetCharacteristicNotification(feedbackChar, true);
                         var desc = feedbackChar.GetDescriptor(UUID.FromString("00002902-0000-1000-8000-00805f9b34fb"));
-                        desc?.SetValue(BluetoothGattDescriptor.EnableNotificationValue);
+                        var enableValue = BluetoothGattDescriptor.EnableNotificationValue;
+                        desc?.SetValue(enableValue is byte[] arr ? arr : (enableValue as IList<byte>)?.ToArray());
                         try { gatt.WriteDescriptor(desc); } catch { }
                     }
 
@@ -178,13 +188,7 @@ public sealed class JocpBleProxyClient
                             ConnectionStateChanged?.Invoke(this, true);
                     });
                 },
-                onCharacteristicChanged: (value) =>
-                {
-                    if (value == null || value.Length < JocpBleProxyConstants.RumblePayloadSize) return;
-                    ushort durationMs = (ushort)(value[4] | (value[5] << 8));
-                    var args = new JocpRumbleEventArgs(value[0], value[1], value[2], value[3], durationMs);
-                    try { RumbleReceived?.Invoke(this, args); } catch { }
-                }
+                onCharacteristicChanged: OnFeedbackPayload
             );
 
             device.ConnectGatt(ctx, false, gattCallback, BluetoothTransports.Le);
@@ -206,11 +210,11 @@ public sealed class JocpBleProxyClient
                 try
                 {
                     var report = _getReport();
-                    if (report.Length >= JocpBleProxyConstants.ReportSizeBytes)
+                    if (report.Length >= JocpBleConstants.ReportSizeBytes)
                     {
-                        var buf = report.Length == JocpBleProxyConstants.ReportSizeBytes
+                        var buf = report.Length == JocpBleConstants.ReportSizeBytes
                             ? report
-                            : report.AsSpan(0, JocpBleProxyConstants.ReportSizeBytes).ToArray();
+                            : report.AsSpan(0, JocpBleConstants.ReportSizeBytes).ToArray();
                         lock (_writeLock)
                         {
                             _reportChar?.SetValue(buf);
@@ -226,7 +230,7 @@ public sealed class JocpBleProxyClient
                 sw.Restart();
             }
         })
-        { IsBackground = true, Name = "JocpBleProxySend" };
+        { IsBackground = true, Name = "JocpBleSend" };
         _sendThread.Start();
     }
 
@@ -307,7 +311,7 @@ public sealed class JocpBleProxyClient
         Stop();
     }
 
-    public sealed record BleProxyDevice(string Name, string Address);
+    public sealed record JocpBleDevice(string Name, string Address);
 
     private sealed class ScanCallbackImpl : ScanCallback
     {
@@ -335,12 +339,12 @@ public sealed class JocpBleProxyClient
     {
         private readonly Action<BluetoothGatt?, GattStatus, int> _onConnectionStateChange;
         private readonly Action<BluetoothGatt?, GattStatus> _onServicesDiscovered;
-        private readonly Action<byte[]?> _onCharacteristicChanged;
+        private readonly Action<object?> _onCharacteristicChanged;
 
         public GattCallbackImpl(
             Action<BluetoothGatt?, GattStatus, int> onConnectionStateChange,
             Action<BluetoothGatt?, GattStatus> onServicesDiscovered,
-            Action<byte[]?> onCharacteristicChanged)
+            Action<object?> onCharacteristicChanged)
         {
             _onConnectionStateChange = onConnectionStateChange;
             _onServicesDiscovered = onServicesDiscovered;
@@ -359,7 +363,7 @@ public sealed class JocpBleProxyClient
 
         public override void OnCharacteristicChanged(BluetoothGatt? gatt, BluetoothGattCharacteristic? characteristic, byte[]? value)
         {
-            _onCharacteristicChanged(value);
+            _onCharacteristicChanged((object?)value);
         }
     }
 }

@@ -4,8 +4,8 @@
              xmlns:local="clr-namespace:ImuToXInput.Maui"
              x:Class="ImuToXInput.Maui.DongleConnectPage"
              Title="Joypad WiFi">
-    <ScrollView>
-        <VerticalStackLayout Spacing="16">
+    <ScrollView x:Name="ScrollViewMain">
+        <VerticalStackLayout x:Name="MainStack" Spacing="16">
             <VerticalStackLayout.Padding>
                 <OnPlatform x:TypeArguments="Thickness">
                     <On Platform="Android" Value="20,80,20,20" />
@@ -14,44 +14,57 @@
                 </OnPlatform>
             </VerticalStackLayout.Padding>
             <Label Text="Send controller input to Joypad OS (JOCP)." FontSize="14" TextColor="#555" />
-            <!-- Mode: Direct (phone on dongle WiFi) or Via ESP32 proxy -->
+            <!-- Mode: Direct (phone on dongle WiFi) or Dongle over BLE -->
             <VerticalStackLayout Spacing="8">
                 <Label Text="Connection" FontSize="12" TextColor="#666" />
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                     <Button x:Name="BtnModeDirect" Text="Phone on dongle WiFi" Clicked="OnModeDirectClicked" />
-                    <Button x:Name="BtnModeEsp32" Text="Via ESP32 proxy" Clicked="OnModeEsp32Clicked" />
+                    <Button x:Name="BtnModeBle" Text="Dongle over BLE" Clicked="OnModeBleClicked" />
                 </Grid>
             </VerticalStackLayout>
             <Label x:Name="LblJocpStatus" Text="Not connected" FontSize="14" TextColor="#555" />
-            <!-- Direct: host/port -->
+            <Label x:Name="LblJocpError" Text="" FontSize="12" TextColor="#C00" IsVisible="False" LineBreakMode="WordWrap" />
+            <Label x:Name="LblRumbleHint" Text="" FontSize="12" TextColor="#666" IsVisible="False" LineBreakMode="WordWrap" />
+            <Button x:Name="BtnTestVibration" Text="Test phone vibration" Clicked="OnTestVibrationClicked" IsVisible="False" />
+            <Button x:Name="BtnTestTrackerRumble" Text="Test tracker rumble" Clicked="OnTestTrackerRumbleClicked" IsVisible="False" />
+            <!-- Direct: host/port + mDNS discover -->
             <VerticalStackLayout x:Name="PanelDirect" Spacing="8">
-                <Label Text="Host (e.g. 192.168.4.1)" FontSize="12" TextColor="#666" />
-                <Entry x:Name="EntryJocpHost" Placeholder="192.168.4.1" Keyboard="Default" Text="192.168.4.1"
+                <Label Text="Host or pick a dongle below" FontSize="12" TextColor="#666" />
+                <Entry x:Name="EntryJocpHost" Placeholder="192.168.4.1 or Joypad-XXXX.local" Keyboard="Default" Text="192.168.4.1"
                        HeightRequest="48" />
-                <Label Text="Port" FontSize="12" TextColor="#666" />
-                <Entry x:Name="EntryJocpPort" Placeholder="30100" Keyboard="Numeric" Text="30100"
-                       HeightRequest="48" />
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                    <Button x:Name="BtnJocpConnect" Text="Connect" Clicked="OnJocpConnectClicked" />
-                    <Button x:Name="BtnJocpDisconnect" Text="Disconnect" Clicked="OnJocpDisconnectClicked" IsVisible="False" />
-                </Grid>
-                <Label x:Name="LblJocpHint" Text="Connect phone to the dongle's WiFi (SSID like JOYPAD-XXXX, password slimevr1), then enter dongle IP (often 192.168.4.1) and Connect." FontSize="12" TextColor="#888" />
-            </VerticalStackLayout>
-            <!-- ESP32 proxy: scan + device list -->
-            <VerticalStackLayout x:Name="PanelEsp32" Spacing="8" IsVisible="False">
-                <Label Text="ESP32 joins the dongle's WiFi (SSID like JOYPAD-XXXX, password slimevr1) and forwards input. Phone stays on cellular or your WiFi." FontSize="12" TextColor="#666" />
-                <Button x:Name="BtnEsp32Scan" Text="Scan for ESP32" Clicked="OnEsp32ScanClicked" />
-                <CollectionView x:Name="ListEsp32Devices" SelectionMode="Single" SelectionChanged="OnEsp32DeviceSelected"
-                               MinimumHeightRequest="120" MaximumHeightRequest="200">
+                <Label Text="Dongles on network:" FontSize="12" TextColor="#666" />
+                <CollectionView x:Name="ListMdnsDevices" SelectionMode="Single" SelectionChanged="OnMdnsDeviceSelected"
+                                 HeightRequest="120">
+                    <CollectionView.EmptyView>
+                        <Label x:Name="LblMdnsEmpty" Text="Discovering…" FontSize="13" TextColor="#888" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,20" />
+                    </CollectionView.EmptyView>
                     <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="local:Esp32DeviceRow">
+                        <DataTemplate x:DataType="local:JocpMdnsDeviceRow">
                             <Label Text="{Binding Display}" FontSize="14" Padding="8,4" LineBreakMode="TailTruncation" />
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                    <Button x:Name="BtnEsp32Connect" Text="Connect to selected" Clicked="OnEsp32ConnectClicked" IsEnabled="False" />
-                    <Button x:Name="BtnEsp32Disconnect" Text="Disconnect" Clicked="OnEsp32DisconnectClicked" IsVisible="False" />
+                    <Button x:Name="BtnJocpConnect" Text="Connect" Clicked="OnJocpConnectClicked" />
+                    <Button x:Name="BtnJocpDisconnect" Text="Disconnect" Clicked="OnJocpDisconnectClicked" IsVisible="False" />
+                </Grid>
+                <Label x:Name="LblJocpHint" Text="Connect phone to the dongle's WiFi (SSID JOYPAD-XXXX, password slimevr1). Dongles on the network are listed above; pick one or enter an IP. Wait until the dongle is ready (e.g. WiFi AP ready) before Connect." FontSize="12" TextColor="#888" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+            <!-- Dongle over BLE: scan + device list -->
+            <VerticalStackLayout x:Name="PanelBle" Spacing="8" IsVisible="False">
+                <Label Text="Connect directly to the Joypad dongle over Bluetooth. No need to join the dongle's WiFi." FontSize="12" TextColor="#666" />
+                <Button x:Name="BtnBleScan" Text="Scan for dongle" Clicked="OnBleScanClicked" />
+                <CollectionView x:Name="ListBleDevices" SelectionMode="Single" SelectionChanged="OnBleDeviceSelected"
+                               MinimumHeightRequest="120" MaximumHeightRequest="200">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="local:JocpBleDeviceRow">
+                            <Label Text="{Binding Display}" FontSize="14" Padding="8,4" LineBreakMode="TailTruncation" />
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Button x:Name="BtnBleConnect" Text="Connect to selected" Clicked="OnBleConnectClicked" IsEnabled="False" />
+                    <Button x:Name="BtnBleDisconnect" Text="Disconnect" Clicked="OnBleDisconnectClicked" IsVisible="False" />
                 </Grid>
             </VerticalStackLayout>
         </VerticalStackLayout>

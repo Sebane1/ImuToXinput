@@ -28,8 +28,8 @@ public partial class ProfileEditorPage : ContentPage
         _onSaved = onSaved;
 
         CmbFloorTracker.ItemsSource = ConfigEditorConstants.FloorTrackerIds;
-        CmbButton.ItemsSource = ConfigEditorConstants.Buttons;
         CmbTrigger.ItemsSource = ConfigEditorConstants.Triggers;
+        if (ConfigEditorConstants.Triggers.Length > 0) CmbTrigger.SelectedIndex = 0;
 
         ListProcessNames.ItemsSource = _processNames;
         ListFloorTrackers.ItemsSource = _trackers;
@@ -380,12 +380,12 @@ public partial class ProfileEditorPage : ContentPage
     private async void OnAddButtonClicked(object? sender, EventArgs e)
     {
         MappingCondition? result = null;
-        var page = new ConditionEditPage(null, c => result = c);
+        string? resultButton = null;
+        var page = new ConditionEditPage(null, (c, btn) => { result = c; resultButton = btn; }, "A");
         await Navigation.PushModalAsync(page);
-        if (result != null)
+        if (result != null && !string.IsNullOrEmpty(resultButton))
         {
-            var button = CmbButton.SelectedItem?.ToString() ?? "A";
-            _buttonMappings.Add(new ButtonMapping { Condition = result, Button = button });
+            _buttonMappings.Add(new ButtonMapping { Condition = result, Button = resultButton });
             RefreshButtonList();
         }
     }
@@ -396,11 +396,12 @@ public partial class ProfileEditorPage : ContentPage
         if (idx < 0 || idx >= _buttonMappings.Count) return;
         var m = _buttonMappings[idx];
         MappingCondition? result = null;
-        var page = new ConditionEditPage(m.Condition, c => result = c);
+        string? resultButton = null;
+        var page = new ConditionEditPage(m.Condition, (c, btn) => { result = c; resultButton = btn; }, m.Button);
         await Navigation.PushModalAsync(page);
-        if (result != null)
+        if (result != null && !string.IsNullOrEmpty(resultButton))
         {
-            _buttonMappings[idx] = new ButtonMapping { Condition = result, Button = m.Button };
+            _buttonMappings[idx] = new ButtonMapping { Condition = result, Button = resultButton };
             RefreshButtonList();
         }
     }
@@ -462,6 +463,32 @@ public partial class ProfileEditorPage : ContentPage
         var idx = _triggerMappings.FindIndex(m => SummarizeTrigger(m) == sel);
         if (idx < 0) return;
         var m = _triggerMappings[idx];
+
+        var choice = await DisplayActionSheet("Edit trigger mapping", "Cancel", null, "Change target trigger", m.FixedValue.HasValue ? "Edit fixed value" : (!string.IsNullOrEmpty(m.Tracker) && !string.IsNullOrEmpty(m.Source) ? "Edit axis" : "Edit condition values"));
+        if (string.IsNullOrEmpty(choice) || choice == "Cancel") return;
+        if (choice == "Change target trigger")
+        {
+            var newTrigger = await DisplayActionSheet("Map to trigger", "Cancel", null, ConfigEditorConstants.Triggers);
+            if (!string.IsNullOrEmpty(newTrigger) && newTrigger != "Cancel" && ConfigEditorConstants.Triggers.Contains(newTrigger))
+            {
+                _triggerMappings[idx] = new TriggerMapping
+                {
+                    Trigger = newTrigger,
+                    FixedValue = m.FixedValue,
+                    Tracker = m.Tracker,
+                    Source = m.Source,
+                    Scale = m.Scale,
+                    Invert = m.Invert,
+                    Deadzone = m.Deadzone,
+                    Condition = m.Condition,
+                    ValueWhenTrue = m.ValueWhenTrue,
+                    ValueWhenFalse = m.ValueWhenFalse
+                };
+                RefreshTriggerList();
+                CmbTrigger.SelectedItem = newTrigger;
+            }
+            return;
+        }
 
         if (m.FixedValue.HasValue)
         {

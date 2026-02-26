@@ -36,6 +36,12 @@ public partial class TrackerDebugPage : ContentPage
         _refreshTimer = null;
     }
 
+    private async void OnBackClicked(object? sender, EventArgs e)
+    {
+        if (Shell.Current != null)
+            await Shell.Current.GoToAsync("//MainPage");
+    }
+
     private void OnRefreshTick(object? sender, EventArgs e)
     {
         RefreshRows();

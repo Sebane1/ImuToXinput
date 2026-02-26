@@ -37,6 +37,9 @@ public static partial class ControllerLoopService
     private static bool _currentIsOverride;
     private static bool _currentIsStepMania;
 
+    /// <summary>When menu mode is toggled (on or off), we pulse the Start button for one frame then release. 2 = next frame press, 1 = next frame release.</summary>
+    private static int _pendingStartPulseFrames;
+
     /// <summary>When set (e.g. on Windows), used to detect the running game process for auto profile and display. Receives loaded config, returns process name or null.</summary>
     public static Func<LoadedConfig?, string?>? GetProcessName { get; set; }
 
@@ -83,6 +86,7 @@ public static partial class ControllerLoopService
                 {
                     var current = Preferences.Default.Get(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, false);
                     Preferences.Default.Set(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, !current);
+                    _pendingStartPulseFrames = 2; // Pulse Start on next loop tick (when activated or deactivated)
                 });
             }
         };
@@ -171,6 +175,18 @@ public static partial class ControllerLoopService
         var menuMode = Preferences.Default.Get(ImuToXInput.Maui.MainPage.MenuModePreferenceKey, false);
         _menuModeState ??= new ThumbstickMenuModeState();
         ControllerMappingRunner.Update(trackers, output, _loadedConfig, () => runningGame, activeOverride, menuMode, menuMode ? _cachedMenuProfile : null, menuMode ? _menuModeState : null);
+
+        // Pulse Start button when menu mode was just toggled (on or off)
+        if (_pendingStartPulseFrames == 2)
+        {
+            output.SetButton(GamepadButton.Start, true);
+            _pendingStartPulseFrames = 1;
+        }
+        else if (_pendingStartPulseFrames == 1)
+        {
+            output.SetButton(GamepadButton.Start, false);
+            _pendingStartPulseFrames = 0;
+        }
     }
 
     private sealed class DispatcherTimerRunner : IDisposable
@@ -205,6 +221,12 @@ public static partial class ControllerLoopService
     }
 
     public static bool IsRunning => _running;
+
+    /// <summary>Request a one-frame Start button press then release. Call when menu mode is toggled from the UI so the game receives Start (e.g. to open/close pause menu).</summary>
+    public static void RequestStartButtonPulse()
+    {
+        _pendingStartPulseFrames = 2;
+    }
 
     /// <summary>Current tracker states (name → state) for UI debugging. Returns null if the loop is not running.</summary>
     public static Dictionary<string, TrackerState>? GetCurrentTrackers() => _slimeVRClient?.Trackers;

@@ -9,6 +9,8 @@
             <Picker x:Name="PickerType" Title="Type" />
             <Label Text="Parameters" />
             <VerticalStackLayout x:Name="PanelFields" Spacing="8" />
+            <Label x:Name="LblMapToButton" Text="Map to button" IsVisible="False" Margin="0,12,0,0" />
+            <Picker x:Name="PickerMapToButton" Title="Button" IsVisible="False" />
             <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,16,0,0">
                 <Button x:Name="BtnOk" Text="OK" Clicked="OnOkClicked" />
                 <Button x:Name="BtnCancel" Text="Cancel" Clicked="OnCancelClicked" Grid.Column="1" />

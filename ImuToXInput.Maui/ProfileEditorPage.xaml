@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:behaviors="clr-namespace:ImuToXInput.Maui.Behaviors"
              x:Class="ImuToXInput.Maui.ProfileEditorPage"
              x:Name="ThisPage"
              Title="Edit profile">
@@ -49,18 +50,18 @@
 
             <!-- Button mappings -->
             <Label Text="Button mappings" FontAttributes="Bold" FontSize="18" />
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
-                <Picker x:Name="CmbButton" Title="Button" Grid.Column="0" MinimumHeightRequest="28" VerticalOptions="Center" />
-                <Button x:Name="BtnAddButton" Text="Add" Grid.Column="1" Clicked="OnAddButtonClicked" Style="{StaticResource CompactButton}" />
-                <Button x:Name="BtnEditButton" Text="Edit" Grid.Column="2" Clicked="OnEditButtonClicked" Style="{StaticResource CompactButton}" />
-                <Button x:Name="BtnRemoveButton" Text="Remove" Grid.Column="3" Clicked="OnRemoveButtonClicked" Style="{StaticResource CompactButton}" />
+            <Grid ColumnDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
+                <Button x:Name="BtnAddButton" Text="Add" Grid.Column="0" Clicked="OnAddButtonClicked" Style="{StaticResource CompactButton}" />
+                <Button x:Name="BtnEditButton" Text="Edit" Grid.Column="1" Clicked="OnEditButtonClicked" Style="{StaticResource CompactButton}" />
+                <Button x:Name="BtnRemoveButton" Text="Remove" Grid.Column="2" Clicked="OnRemoveButtonClicked" Style="{StaticResource CompactButton}" />
             </Grid>
             <CollectionView x:Name="ListButtons" HeightRequest="120" SelectionMode="Single" />
 
             <!-- Trigger mappings -->
             <Label Text="Trigger mappings" FontAttributes="Bold" FontSize="18" />
+            <Label Text="Map to trigger (select target, then Add or Edit):" />
             <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
-                <Picker x:Name="CmbTrigger" Title="Trigger" Grid.Column="0" MinimumHeightRequest="28" VerticalOptions="Center" />
+                <Picker x:Name="CmbTrigger" Title="Map to trigger" Grid.Column="0" MinimumHeightRequest="28" VerticalOptions="Center" />
                 <Button x:Name="BtnAddTrigger" Text="Add" Grid.Column="1" Clicked="OnAddTriggerClicked" Style="{StaticResource CompactButton}" />
                 <Button x:Name="BtnEditTrigger" Text="Edit" Grid.Column="2" Clicked="OnEditTriggerClicked" Style="{StaticResource CompactButton}" />
                 <Button x:Name="BtnRemoveTrigger" Text="Remove" Grid.Column="3" Clicked="OnRemoveTriggerClicked" Style="{StaticResource CompactButton}" />
@@ -81,7 +82,11 @@
             <Label Text="Script (axis/button/trigger)" FontAttributes="Bold" FontSize="18" />
             <VerticalStackLayout Spacing="8">
                 <Border Stroke="#808080" StrokeThickness="1" Background="#FFF8F0" Padding="0">
-                    <WebView x:Name="ScriptWebView" HeightRequest="380" MinimumHeightRequest="200" />
+                    <WebView x:Name="ScriptWebView" HeightRequest="380" MinimumHeightRequest="200">
+                        <WebView.Behaviors>
+                            <behaviors:ScriptEditorKeyboardBehavior />
+                        </WebView.Behaviors>
+                    </WebView>
                 </Border>
                 <HorizontalStackLayout Spacing="12">
                     <Button x:Name="BtnRefreshFromForm" Text="Refresh from form" Clicked="OnRefreshFromFormClicked" Style="{StaticResource CompactButton}" />

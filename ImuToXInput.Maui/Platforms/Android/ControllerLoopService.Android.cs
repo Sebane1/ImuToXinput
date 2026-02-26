@@ -10,7 +10,7 @@ public static partial class ControllerLoopService
     static ControllerLoopService()
     {
         GetOutput = () => Platforms.Android.BleGamepadOutput.Instance;
-        // Run the mapping loop on a background thread so it keeps running when the app is in the background.
+        // Run the mapping loop on a background thread and keep a foreground service so input continues when app is backgrounded.
         CreateLoopTimer = (intervalMs, tick) => new BackgroundLoopRunner(intervalMs, tick);
     }
 
@@ -22,6 +22,7 @@ public static partial class ControllerLoopService
 
         public BackgroundLoopRunner(int intervalMs, Action tick)
         {
+            StartForegroundService();
             AcquireWakeLock();
             _thread = new Thread(() =>
             {
@@ -51,7 +52,7 @@ public static partial class ControllerLoopService
         {
             try
             {
-                var ctx = Android.App.Application.Context;
+                var ctx = global::Android.App.Application.Context;
                 if (ctx == null) return;
                 var pm = (PowerManager?)ctx.GetSystemService(Context.PowerService);
                 if (pm == null) return;
@@ -87,6 +88,40 @@ public static partial class ControllerLoopService
                 try { _thread.Join(500); } catch { }
             }
             ReleaseWakeLock();
+            StopForegroundService();
+        }
+
+        private static void StartForegroundService()
+        {
+            try
+            {
+                var ctx = global::Android.App.Application.Context;
+                if (ctx == null) return;
+                var intent = new Intent(ctx, typeof(Platforms.Android.ControllerForegroundService));
+                if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
+                    ctx.StartForegroundService(intent);
+                else
+                    ctx.StartService(intent);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ControllerLoop] StartForegroundService failed: {ex.Message}");
+            }
+        }
+
+        private static void StopForegroundService()
+        {
+            try
+            {
+                var ctx = global::Android.App.Application.Context;
+                if (ctx == null) return;
+                var intent = new Intent(ctx, typeof(Platforms.Android.ControllerForegroundService));
+                ctx.StopService(intent);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ControllerLoop] StopForegroundService failed: {ex.Message}");
+            }
         }
     }
 }

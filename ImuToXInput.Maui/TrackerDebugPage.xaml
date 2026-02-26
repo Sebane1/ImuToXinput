@@ -5,6 +5,8 @@
              Title="Tracker angles">
     <ScrollView>
         <VerticalStackLayout Spacing="12">
+            <Button x:Name="BtnBack" Text="← Back to Profiles" Clicked="OnBackClicked"
+                    HorizontalOptions="Start" Margin="0,0,0,8" />
             <VerticalStackLayout.Padding>
                 <OnPlatform x:TypeArguments="Thickness">
                     <On Platform="Android" Value="20,80,20,20" />
